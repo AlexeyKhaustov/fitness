@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fitness Video - {% block title %}Home{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+</head>
+<body class="bg-gray-900 text-white font-sans">
+    <header class="bg-gray-800 p-4 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-3xl font-bold text-green-500">Fitness Video</h1>
+            <nav>
+                <ul class="flex space-x-6">
+                    <li><a href="{% url 'home' %}" class="hover:text-green-400">Home</a></li>
+                    {% if request.user.is_authenticated %}
+                        <li><a href="{% url 'profile' %}" class="hover:text-green-400">Profile</a></li>
+                        <li><a href="{% url 'account_logout' %}" class="hover:text-red-400">Logout</a></li>
+                    {% else %}
+                        <li><a href="{% url 'account_login' %}" class="hover:text-green-400">Login</a></li>
+                        <li><a href="{% url 'account_signup' %}" class="hover:text-green-400">Sign Up</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main class="container mx-auto p-6">
+        {% block content %}{% endblock %}
+    </main>
+</body>
+</html>

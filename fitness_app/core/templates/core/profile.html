@@ -1,0 +1,17 @@
+{% extends 'core/base.html' %}
+{% block title %}Profile{% endblock %}
+{% block content %}
+    <div class="max-w-md mx-auto bg-gray-800 p-6 rounded-lg shadow-lg">
+        <h2 class="text-3xl font-bold text-orange-500 mb-4">Ваш профиль</h2>
+        <p><strong>Имя пользователя:</strong> {{ request.user.username }}</p>
+        <p><strong>Email:</strong> {{ request.user.email }}</p>
+        {% if user_profile %}
+            <p><strong>Полное имя:</strong> {{ user_profile.full_name }}</p>
+            <p><strong>Телефон:</strong> {{ user_profile.phone|default:"Не указан" }}</p>
+            <p><strong>Подписка:</strong> {{ user_profile.subscription_active|yesno:"Активна,Не активна" }}</p>
+        {% else %}
+            <p>Профиль не заполнен. <a href="#" class="text-green-500">Обновить данные</a></p>
+        {% endif %}
+        <a href="{% url 'home' %}" class="mt-4 inline-block bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">На главную</a>
+    </div>
+{% endblock %}
