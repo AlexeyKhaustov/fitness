@@ -1,0 +1,25 @@
+{% extends 'core/base.html' %}
+{% block title %}Videos{% endblock %}
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <h2 class="text-3xl font-bold text-orange-500 mb-6">Фитнес-видео</h2>
+    {% if videos %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {% for video in videos %}
+                <div class="bg-gray-800 p-4 rounded-lg shadow-lg">
+                    <h3 class="text-xl font-semibold text-green-500 mb-2">{{ video.title }}</h3>
+                    <p class="text-gray-300 mb-4">{{ video.description|truncatewords:20 }}</p>
+                    <video controls class="w-full rounded">
+                        <source src="{{ video.file.url }}" type="video/mp4">
+                        Ваш браузер не поддерживает видео.
+                    </video>
+                    <p class="text-sm text-gray-500 mt-2">{{ video.is_free|yesno:"Бесплатное,Платное" }}</p>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-gray-400">Нет доступных видео.</p>
+    {% endif %}
+    <a href="{% url 'profile' %}" class="mt-6 inline-block bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Вернуться в профиль</a>
+</div>
+{% endblock %}

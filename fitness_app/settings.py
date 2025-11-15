@@ -59,6 +59,8 @@ ACCOUNT_LOGIN_REDIRECT_URL = '/profile/'
 ACCOUNT_LOGIN_METHODS = ['email', 'username']  # Аутентификация только по email
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']  # Обязательные поля при регистрации
 
+LOGIN_REDIRECT_URL = '/profile/'
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
