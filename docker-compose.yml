@@ -1,0 +1,41 @@
+services:
+  web:
+    environment:
+      - POSTGRES_DB=fitness_db
+      - POSTGRES_USER=fitness_user
+      - POSTGRES_PASSWORD=supersecret12345
+    build: .
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - staticfiles:/app/staticfiles
+      - media:/app/media
+    depends_on:
+      - db
+    entrypoint: ["/app/wait-for-db.sh"]
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: fitness_db
+      POSTGRES_USER: fitness_user
+      POSTGRES_PASSWORD: supersecret12345   # замените на свой пароль из .env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "8080:80"                         # ← наш сайт будет на http://localhost:8080
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - staticfiles:/app/staticfiles:ro
+      - media:/app/media:ro
+    depends_on:
+      - web
+
+volumes:
+  postgres_data:
+  staticfiles:
+  media:

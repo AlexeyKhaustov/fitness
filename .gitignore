@@ -107,11 +107,19 @@ media/
 *.db
 *.pid
 
+
+.idea
+
+*.pyo
+*.pyd
+*.pot
+*.DS_Store
+.env
+postgres_data/
+
 # Ignore Django Migrations in Development if you are working on team
 
 # Only for Development only
 # **/migrations/**
 # !**/migrations
 # !**/migrations/__init__.py
-
-.idea
