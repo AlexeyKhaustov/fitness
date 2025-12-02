@@ -70,15 +70,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'fitness_app.wsgi.application'
 
-# База данных
+# База данных - ИСПРАВЛЕНО: используем POSTGRES_* переменные из .env
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql' if config('DB_HOST', default='') else 'django.db.backends.sqlite3',
-        'NAME': config('DB_NAME', default=str(BASE_DIR / 'db.sqlite3')),
-        'USER': config('DB_USER', default=''),
-        'PASSWORD': config('DB_PASSWORD', default=''),
-        'HOST': config('DB_HOST', default=''),
-        'PORT': config('DB_PORT', default=''),
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': config('POSTGRES_DB', default='fitness_db'),
+        'USER': config('POSTGRES_USER', default='fitness_user'),
+        'PASSWORD': config('POSTGRES_PASSWORD', default=''),
+        'HOST': config('POSTGRES_HOST', default='db'),
+        'PORT': config('POSTGRES_PORT', default=5432),
     }
 }
 
@@ -115,18 +115,13 @@ ACCOUNT_SIGNUP_REDIRECT_URL = '/profile/'
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
 LOGIN_REDIRECT_URL = '/profile/'
 
-# === ЛОКАЛЬНАЯ РАЗРАБОТКА: отключаем SSL/HTTPS требования ===
-# (чтобы не было проблем с куками и CSRF на http://localhost:8080)
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
-
 # Безопасность
 # Важно: Django за обратным прокси с SSL
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# Безопасность только в продакшене
+# Настройки безопасности в зависимости от DEBUG
 if not DEBUG:
-    # Nginx уже обработал SSL, не перенаправляем
+    # ПРОДАКШЕН: Nginx уже обработал SSL, не перенаправляем
     SECURE_SSL_REDIRECT = False
     
     # Куки должны быть защищены (браузер использует HTTPS)
@@ -139,13 +134,10 @@ if not DEBUG:
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
 else:
-    # В режиме отладки
+    # РАЗРАБОТКА: отключаем HTTPS требования
     SECURE_SSL_REDIRECT = False
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False
 
-# Дополнительно: разрешаем куки CSRF при отладке
-CSRF_COOKIE_HTTPONLY = False
-
-# Отладка CSRF кук
+# Отладка CSRF кук (для разработки)
 CSRF_COOKIE_HTTPONLY = False
