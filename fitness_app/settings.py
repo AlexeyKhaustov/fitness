@@ -9,17 +9,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('DJANGO_SECRET_KEY')
 DEBUG = config('DJANGO_DEBUG', default=True, cast=bool)
 
-# ВАЖНО: разрешаем всё для локальной разработки
-ALLOWED_HOSTS = [
-    'localhost',
-    '127.0.0.1', 
-    '0.0.0.0',
-    '[::1]',
-    'fitnessvideo.ru',
-    'www.fitnessvideo.ru',
-    '155.212.245.253',
-    'web'  # Имя сервиса в Docker сети
-]
+# ALLOWED_HOSTS берется из переменной окружения
+ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 
 # Добавляем доверенные источники для CSRF (обязательно при работе через nginx на порту 8080)
 CSRF_TRUSTED_ORIGINS = [
