@@ -10,12 +10,27 @@ SECRET_KEY = config('DJANGO_SECRET_KEY')
 DEBUG = config('DJANGO_DEBUG', default=True, cast=bool)
 
 # ВАЖНО: разрешаем всё для локальной разработки
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', '[::1]']
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1', 
+    '0.0.0.0',
+    '[::1]',
+    'fitnessvideo.ru',
+    'www.fitnessvideo.ru',
+    '155.212.245.253',
+    'web'  # Имя сервиса в Docker сети
+]
 
 # Добавляем доверенные источники для CSRF (обязательно при работе через nginx на порту 8080)
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8080',
     'http://127.0.0.1:8080',
+    'http://fitnessvideo.ru',
+    'https://fitnessvideo.ru',
+    'http://www.fitnessvideo.ru',
+    'https://www.fitnessvideo.ru',
+    'http://155.212.245.253',
+    'https://155.212.245.253'
 ]
 
 # Приложения
@@ -114,15 +129,32 @@ LOGIN_REDIRECT_URL = '/profile/'
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 
+# Безопасность
+# Важно: Django за обратным прокси с SSL
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # Безопасность только в продакшене
 if not DEBUG:
-    SECURE_SSL_REDIRECT = True
+    # Nginx уже обработал SSL, не перенаправляем
+    SECURE_SSL_REDIRECT = False
+    
+    # Куки должны быть защищены (браузер использует HTTPS)
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    
+    # Другие security настройки
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
+else:
+    # В режиме отладки
+    SECURE_SSL_REDIRECT = False
+    SESSION_COOKIE_SECURE = False
+    CSRF_COOKIE_SECURE = False
 
 # Дополнительно: разрешаем куки CSRF при отладке
+CSRF_COOKIE_HTTPONLY = False
+
+# Отладка CSRF кук
 CSRF_COOKIE_HTTPONLY = False
