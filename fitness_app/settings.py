@@ -68,6 +68,11 @@ TEMPLATES = [
     },
 ]
 
+ACCOUNT_FORMS = {
+    'signup': 'fitness_app.core.forms.CustomSignupForm',
+    'login': 'fitness_app.core.forms.CustomLoginForm',
+}
+
 WSGI_APPLICATION = 'fitness_app.wsgi.application'
 
 # База данных - ИСПРАВЛЕНО: используем POSTGRES_* переменные из .env
@@ -108,12 +113,16 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
-ACCOUNT_LOGIN_METHODS = ['email']
+ACCOUNT_LOGIN_METHODS = ['email', 'username']
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
 ACCOUNT_LOGIN_REDIRECT_URL = '/profile/'
 ACCOUNT_SIGNUP_REDIRECT_URL = '/profile/'
 ACCOUNT_LOGOUT_REDIRECT_URL = '/'
 LOGIN_REDIRECT_URL = '/profile/'
+
+ACCOUNT_EMAIL_VERIFICATION = "none"
+ACCOUNT_EMAIL_REQUIRED = False
+
 
 # Безопасность
 # Важно: Django за обратным прокси с SSL
