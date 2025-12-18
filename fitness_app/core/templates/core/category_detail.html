@@ -1,0 +1,14 @@
+{% extends 'core/base.html' %}
+{% block title %}{{ category.name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-12">
+    <div class="text-center mb-12 text-center">
+        <i class="fa-solid fa-{{ category.icon }} text-6xl {{ category.color|slice:":17" }} bg-clip-text text-transparent"></i>
+        <h1 class="text-5xl font-bold mt-4">{{ category.name }}</h1>
+        <p class="text-gray-400 mt-2">{{ category.videos.count }} видео</p>
+    </div>
+
+    {% include 'core/partials/video_grid.html' with videos=category.videos.all %}
+</div>
+{% endblock %}

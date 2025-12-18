@@ -1,33 +1,63 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" class="scroll-smooth">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fitness Video - {% block title %}Home{% endblock %}</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% block title %}FitnessVideo{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 </head>
-<body class="bg-gray-900 text-white font-sans">
-    <header class="bg-gray-800 p-4 shadow-lg">
-        <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-3xl font-bold text-green-500">Fitness Video</h1>
-            <nav>
-                <ul class="flex space-x-6">
-                    <li><a href="{% url 'home' %}" class="hover:text-green-400">Home</a></li>
-                    <li><a href="{% url 'videos' %}" class="hover:text-green-400">Videos</a></li>
-                    {% if request.user.is_authenticated %}
-                        <li><a href="{% url 'profile' %}" class="hover:text-green-400">Profile</a></li>
-                        <li><a href="{% url 'account_logout' %}" class="hover:text-red-400">Logout</a></li>
-                    {% else %}
-                        <li><a href="{% url 'account_login' %}" class="hover:text-green-400">Login</a></li>
-                        <li><a href="{% url 'account_signup' %}" class="hover:text-green-400">Sign Up</a></li>
-                    {% endif %}
-                </ul>
-            </nav>
-        </div>
-    </header>
-    <main class="container mx-auto p-6">
-        {% block content %}{% endblock %}
-    </main>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col">
+
+  <!-- Шапка -->
+  <header class="bg-gray-800 shadow-lg sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <a href="/" class="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">
+        FitnessVideo
+      </a>
+      <nav class="flex items-center gap-6">
+        {% if request.path != '/' %}
+          <a href="/" class="hover:text-purple-400 transition">Home</a>
+        {% endif %}
+
+        {% if user.is_authenticated %}
+          <a href="/profile/" class="hover:text-purple-400 transition">Профиль</a>
+          <form method="post" action="{% url 'account_logout' %}" class="inline">
+            {% csrf_token %}
+            <button type="submit" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition">
+              Выйти
+            </button>
+          </form>
+        {% else %}
+          <button hx-get="/accounts/login/" hx-target="#modal-content" hx-swap="innerHTML"
+                  class="hover:text-purple-400 transition">Войти</button>
+          <button hx-get="/accounts/signup/" hx-target="#modal-content" hx-swap="innerHTML"
+                  class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition">Регистрация</button>
+        {% endif %}
+      </nav>
+    </div>
+  </header>
+
+  <main class="flex-1">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Модальное окно -->
+  <div id="modal" class="fixed inset-0 z-50 items-center justify-center hidden">
+    <div class="fixed inset-0 bg-black bg-opacity-70" onclick="document.getElementById('modal').classList.add('hidden')"></div>
+    <div class="relative bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 p-8" id="modal-content">
+      <!-- Формы подгрузятся сюда через HTMX -->
+    </div>
+  </div>
+
+  <script>
+    document.body.addEventListener('htmx:afterSwap', (e) => {
+      if (e.target.id === 'modal-content') {
+        document.getElementById('modal').classList.remove('hidden');
+        document.getElementById('modal').classList.add('flex');
+      }
+    });
+  </script>
 </body>
 </html>

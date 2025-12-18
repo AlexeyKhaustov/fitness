@@ -5,5 +5,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends postgresql-clie
 WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+# COPY templates /app/templates
 COPY . .
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "fitness_app.wsgi"]

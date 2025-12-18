@@ -1,14 +1,31 @@
 {% extends 'core/base.html' %}
-{% block title %}Home{% endblock %}
+{% load static %}
+
+{% block title %}Главная{% endblock %}
+
 {% block content %}
-    <div class="text-center">
-        <h2 class="text-4xl font-bold text-orange-500 mb-4">Добро пожаловать в Fitness Video!</h2>
-        <p class="mb-6">Откройте для себя лучшие тренировки с нашими видеоуроками.</p>
-        {% if not request.user.is_authenticated %}
-            <a href="{% url 'account_signup' %}" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700">Зарегистрироваться</a>
-            <a href="{% url 'account_login' %}" class="ml-4 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">Войти</a>
-        {% else %}
-            <a href="{% url 'profile' %}" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700">Перейти в профиль</a>
-        {% endif %}
+<div class="max-w-7xl mx-auto px-4 py-12">
+    <h1 class="text-4xl md:text-5xl font-bold text-center mb-4 bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">
+        Выбери свою тренировку
+    </h1>
+    <p class="text-center text-gray-400 mb-12 text-lg">Более 10000 :) видео профессиональных тренировок </p>
+
+    <!-- Категории -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-16">
+        {% for cat in categories %}
+        <a href="{% url 'category_detail' cat.slug %}"
+           class="group relative overflow-hidden rounded-2xl shadow-2xl transform transition-all duration-300 hover:scale-105">
+            <div class="{{ cat.color }} p-8 h-48 flex flex-col items-center justify-center text-white">
+                <i class="fa-solid fa-{{ cat.icon }} text-6xl mb-4 group-hover:animate-pulse"></i>
+                <h3 class="text-xl font-bold text-center">{{ cat.name }}</h3>
+            </div>
+            <div class="absolute inset-0 bg-black opacity-0 group-hover:opacity-30 transition-opacity"></div>
+        </a>
+        {% endfor %}
     </div>
+
+    <!-- Последние видео -->
+    <h2 class="text-3xl font-bold mb-8 text-center">Новые тренировки</h2>
+    {% include 'core/partials/video_grid.html' with videos=latest_videos %}
+</div>
 {% endblock %}

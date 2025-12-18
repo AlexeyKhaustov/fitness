@@ -10,12 +10,15 @@ services:
     volumes:
       - .:/app
       - staticfiles:/app/staticfiles
+#      - ./templates:/app/templates  # Для продакшена лучше COPY templates/account /app/templates/account
       - media:/app/media
     depends_on:
       - db
     entrypoint: ["/app/wait-for-db.sh"]
 
   db:
+    ports:
+      - "5432:5432"
     image: postgres:15
     environment:
       POSTGRES_DB: fitness_db
