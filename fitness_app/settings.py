@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from decouple import config
+from django.contrib.messages import constants as messages
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -71,6 +72,8 @@ TEMPLATES = [
 ACCOUNT_FORMS = {
     'signup': 'fitness_app.core.forms.CustomSignupForm',
     'login': 'fitness_app.core.forms.CustomLoginForm',
+    'reset_password': 'fitness_app.core.forms.CustomResetPasswordForm',
+    'reset_password_from_key': 'fitness_app.core.forms.CustomResetPasswordKeyForm',
 }
 
 WSGI_APPLICATION = 'fitness_app.wsgi.application'
@@ -88,11 +91,23 @@ DATABASES = {
 }
 
 # Валидация паролей
+# Минимальные требования к паролю
 AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+    {
+        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {
+            'min_length': 6,  # Минимум 6 символов вместо 8
+        }
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+    },
+    {
+        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
 ]
 
 # Интернационализация
@@ -117,11 +132,36 @@ ACCOUNT_LOGIN_METHODS = ['email', 'username']
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
 ACCOUNT_LOGIN_REDIRECT_URL = '/profile/'
 ACCOUNT_SIGNUP_REDIRECT_URL = '/profile/'
-ACCOUNT_LOGOUT_REDIRECT_URL = '/'
+ACCOUNT_LOGOUT_REDIRECT_URL = '/' # Перенаправление после выхода
+ACCOUNT_LOGOUT_ON_GET = True  # Это уберет подтверждение при выходе
 LOGIN_REDIRECT_URL = '/profile/'
 
-ACCOUNT_EMAIL_VERIFICATION = "none"
-ACCOUNT_EMAIL_REQUIRED = False
+
+ACCOUNT_AUTHENTICATION_METHOD = "username_email"  # Можно войти по username или email
+ACCOUNT_EMAIL_REQUIRED = True  # Email необязателен
+ACCOUNT_UNIQUE_EMAIL = True
+ACCOUNT_USERNAME_REQUIRED = True
+ACCOUNT_USERNAME_MIN_LENGTH = 3
+ACCOUNT_EMAIL_VERIFICATION = 'optional'  # 'mandatory' - требовать подтверждение, 'optional' - не требовать
+ACCOUNT_PRESERVE_USERNAME_CASING = False  # Приводим username к нижнему регистру
+ACCOUNT_LOGIN_ON_PASSWORD_RESET = True   # Автовход после сброса
+
+# Настройки почты (для начала - консольный вывод)
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # консольный вывод
+EMAIL_HOST = 'smtp.gmail.com'  # или ваш SMTP
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = ''  # ваш email
+EMAIL_HOST_PASSWORD = ''  # пароль приложения
+DEFAULT_FROM_EMAIL = 'noreply@fitnessvideo.ru'
+
+
+MESSAGE_TAGS = {
+    messages.SUCCESS: 'success',
+    messages.ERROR: 'error',
+    messages.WARNING: 'warning',
+    messages.INFO: 'info',
+}
 
 
 # Безопасность
