@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import UserProfile, Video, Category
+from .models import UserProfile, Video, Category, Banner
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
@@ -40,3 +40,35 @@ class CategoryAdmin(admin.ModelAdmin):
         }
         kwargs.update({'help_texts': help_texts})
         return super().get_form(request, obj, **kwargs)
+
+
+
+@admin.register(Banner)
+class BannerAdmin(admin.ModelAdmin):
+    list_display = ('title', 'is_active', 'priority', 'text_position', 'created_at')
+    list_filter = ('is_active', 'text_position', 'show_on_mobile', 'show_on_desktop')
+    list_editable = ('is_active', 'priority')
+    search_fields = ('title', 'subtitle')
+
+    fieldsets = (
+        ('Основное', {
+            'fields': ('title', 'subtitle', 'button_text', 'button_link', 'image', 'image_mobile')
+        }),
+        ('Стилизация', {
+            'fields': ('text_color', 'overlay_color', 'text_position'),
+            'classes': ('collapse',)
+        }),
+        ('Управление показом', {
+            'fields': ('is_active', 'priority', 'show_on_mobile', 'show_on_desktop', 'start_date', 'end_date'),
+            'description': '<strong>Рекомендации по размерам:</strong><br>'
+                           '• Десктоп: 1920×600px (рекомендуется)<br>'
+                           '• Мобильные: 800×650px (если не указано, используется основное изображение)<br>'
+                           '• Формат: JPG или PNG, оптимизировано для web'
+        }),
+    )
+
+    class Media:
+        css = {
+            'all': ('admin/css/banner_admin.css',)
+        }
+

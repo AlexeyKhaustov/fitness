@@ -64,6 +64,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'fitness_app.core.context_processors.active_banners',
             ],
         },
     },
@@ -128,8 +129,8 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
-ACCOUNT_LOGIN_METHODS = ['email', 'username']
-ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
+ACCOUNT_LOGIN_METHODS = ['email', 'username']  # Вход по email или username
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']  # Обязательные поля при регистрации
 ACCOUNT_LOGIN_REDIRECT_URL = '/profile/'
 ACCOUNT_SIGNUP_REDIRECT_URL = '/profile/'
 ACCOUNT_LOGOUT_REDIRECT_URL = '/' # Перенаправление после выхода
@@ -137,10 +138,7 @@ ACCOUNT_LOGOUT_ON_GET = True  # Это уберет подтверждение �
 LOGIN_REDIRECT_URL = '/profile/'
 
 
-ACCOUNT_AUTHENTICATION_METHOD = "username_email"  # Можно войти по username или email
-ACCOUNT_EMAIL_REQUIRED = True  # Email необязателен
 ACCOUNT_UNIQUE_EMAIL = True
-ACCOUNT_USERNAME_REQUIRED = True
 ACCOUNT_USERNAME_MIN_LENGTH = 3
 ACCOUNT_EMAIL_VERIFICATION = 'optional'  # 'mandatory' - требовать подтверждение, 'optional' - не требовать
 ACCOUNT_PRESERVE_USERNAME_CASING = False  # Приводим username к нижнему регистру

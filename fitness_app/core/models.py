@@ -1,6 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.urls import reverse
+from django.utils import timezone
+
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -45,3 +47,56 @@ class Video(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class Banner(models.Model):
+    title = models.CharField('Заголовок', max_length=200)
+    subtitle = models.TextField('Подзаголовок', max_length=500, blank=True)
+    button_text = models.CharField('Текст кнопки', max_length=50, default='Смотреть')
+    button_link = models.CharField('Ссылка кнопки', max_length=200, default='/')
+    image = models.ImageField('Изображение', upload_to='banners/')
+    image_mobile = models.ImageField('Изображение (мобильное)', upload_to='banners/mobile/', blank=True)
+
+    # Стилизация
+    text_color = models.CharField('Цвет текста', max_length=7, default='#FFFFFF')
+    overlay_color = models.CharField('Цвет оверлея', max_length=25, default='rgba(0,0,0,0.4)')
+    text_position = models.CharField('Позиция текста', max_length=20,
+                                     choices=[('left', 'Слева'), ('center', 'Центр'), ('right', 'Справа')],
+                                     default='center')
+
+    # Управление
+    is_active = models.BooleanField('Активный', default=True)
+    priority = models.IntegerField('Приоритет', default=1,
+                                   help_text='Чем выше число, тем выше приоритет')
+    show_on_mobile = models.BooleanField('Показывать на мобильных', default=True)
+    show_on_desktop = models.BooleanField('Показывать на ПК', default=True)
+
+    # Даты
+    start_date = models.DateTimeField('Дата начала показа', blank=True, null=True)
+    end_date = models.DateTimeField('Дата окончания показа', blank=True, null=True)
+
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Баннер'
+        verbose_name_plural = 'Баннеры'
+        ordering = ['-priority', '-created_at']
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def is_currently_active(self):
+        """Проверяет, активен ли баннер в текущее время"""
+        if not self.is_active:
+            return False
+
+        now = timezone.now()
+        if self.start_date and now < self.start_date:
+            return False
+        if self.end_date and now > self.end_date:
+            return False
+
+        return True
+

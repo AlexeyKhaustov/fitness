@@ -1,6 +1,12 @@
-# forms.py
 from allauth.account.forms import SignupForm, LoginForm, ResetPasswordForm, ResetPasswordKeyForm
-from django import forms
+
+class CustomSignupForm(SignupForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Явно делаем email обязательным
+        self.fields['email'].required = True
+        self.fields['email'].widget.attrs['placeholder'] = 'Email (обязательно)'
+        # ... остальные настройки ...
 
 
 class CustomSignupForm(SignupForm):
