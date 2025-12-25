@@ -65,6 +65,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'fitness_app.core.context_processors.active_banners',
+                'fitness_app.core.context_processors.active_seo_blocks',
             ],
         },
     },
@@ -122,6 +123,13 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',  # Для разработки
+]
+
+# Или минимально:
+STATIC_URL = 'static/'
 
 # Allauth настройки
 SITE_ID = 1

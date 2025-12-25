@@ -5,7 +5,7 @@
 
 {% block content %}
 
-    <!-- Баннер -->
+<!-- Баннер -->
 <div class="mt-4">
     {% if active_banners %}
     <div class="mb-16">
@@ -33,8 +33,101 @@
         {% endfor %}
     </div>
 
-    <!-- Последние видео -->
-    <h2 class="text-3xl font-bold mb-8 text-center">Новые тренировки</h2>
-    {% include 'core/partials/video_grid.html' with videos=latest_videos %}
+    <!-- SEO блоки -->
+    {% if seo_blocks %}
+    <div class="space-y-8 mb-16">
+        {% for block in seo_blocks %}
+        <div id="{{ block.slug }}" class="seo-block seo-block-{{ block.style }} rounded-2xl shadow-2xl overflow-hidden transition-all duration-500 hover:shadow-purple-500/30"
+             style="background-color: {{ block.background_color|default:'#1f2937' }}; color: {{ block.text_color|default:'#ffffff' }}">
+
+            {% if block.style == 'image_left' %}
+            <!-- Изображение слева -->
+            <div class="flex flex-col md:flex-row items-center">
+                {% if block.image %}
+                <div class="md:w-2/5">
+                    <img src="{{ block.image.url }}"
+                         alt="{{ block.title }}"
+                         class="w-full h-64 md:h-80 object-cover">
+                </div>
+                {% endif %}
+                <div class="md:w-3/5 p-8 md:p-12">
+                    <{{ block.header_tag }} class="text-2xl md:text-3xl font-bold mb-6">
+                        {{ block.title }}
+                    </{{ block.header_tag }}>
+                    <div class="text-lg space-y-4">
+                        {{ block.content|safe }}
+                    </div>
+                </div>
+            </div>
+
+            {% elif block.style == 'image_right' %}
+            <!-- Изображение справа -->
+            <div class="flex flex-col md:flex-row-reverse items-center">
+                {% if block.image %}
+                <div class="md:w-2/5">
+                    <img src="{{ block.image.url }}"
+                         alt="{{ block.title }}"
+                         class="w-full h-64 md:h-80 object-cover">
+                </div>
+                {% endif %}
+                <div class="md:w-3/5 p-8 md:p-12">
+                    <{{ block.header_tag }} class="text-2xl md:text-3xl font-bold mb-6">
+                        {{ block.title }}
+                    </{{ block.header_tag }}>
+                    <div class="text-lg space-y-4">
+                        {{ block.content|safe }}
+                    </div>
+                </div>
+            </div>
+
+            {% elif block.style == 'centered' %}
+            <!-- Центрированный текст -->
+            <div class="text-center p-12">
+                <{{ block.header_tag }} class="text-3xl md:text-4xl font-bold mb-8">
+                    {{ block.title }}
+                </{{ block.header_tag }}>
+                <div class="max-w-3xl mx-auto text-lg leading-relaxed space-y-6">
+                    {{ block.content|safe }}
+                </div>
+            </div>
+
+            {% elif block.style == 'light' %}
+            <!-- Светлый фон -->
+            <div class="p-8 md:p-12 bg-gray-100 text-gray-900 rounded-2xl">
+                <{{ block.header_tag }} class="text-2xl md:text-3xl font-bold mb-6 text-gray-900">
+                    {{ block.title }}
+                </{{ block.header_tag }}>
+                <div class="text-lg text-gray-700 space-y-4">
+                    {{ block.content|safe }}
+                </div>
+            </div>
+
+            {% elif block.style == 'gradient' %}
+            <!-- Градиентный фон -->
+            <div class="p-8 md:p-12 bg-gradient-to-r from-purple-900 via-purple-800 to-pink-800 rounded-2xl">
+                <{{ block.header_tag }} class="text-2xl md:text-3xl font-bold mb-6">
+                    {{ block.title }}
+                </{{ block.header_tag }}>
+                <div class="text-lg space-y-4">
+                    {{ block.content|safe }}
+                </div>
+            </div>
+
+            {% else %}
+            <!-- По умолчанию (default) -->
+            <div class="p-8 md:p-12">
+                <{{ block.header_tag }} class="text-2xl md:text-3xl font-bold mb-6">
+                    {{ block.title }}
+                </{{ block.header_tag }}>
+                <div class="text-lg space-y-4">
+                    {{ block.content|safe }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
 </div>
 {% endblock %}

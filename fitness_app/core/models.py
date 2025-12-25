@@ -100,3 +100,51 @@ class Banner(models.Model):
 
         return True
 
+
+class SeoBlock(models.Model):
+    STYLE_CHOICES = [
+        ('default', 'По умолчанию (темный градиент)'),
+        ('light', 'Светлый фон'),
+        ('image_left', 'Изображение слева, текст справа'),
+        ('image_right', 'Изображение справа, текст слева'),
+        ('centered', 'Центрированный текст без изображения'),
+        ('gradient', 'Градиентный фон без изображения'),
+    ]
+
+    HEADER_TAG_CHOICES = [
+        ('h1', 'H1'),
+        ('h2', 'H2'),
+        ('h3', 'H3'),
+    ]
+
+    title = models.CharField('Заголовок', max_length=200)
+    content = models.TextField('Контент',
+                               help_text='Можно использовать HTML теги: <strong>, <em>, <a>, <ul>, <li>, <p>')
+    slug = models.SlugField('URL-идентификатор', max_length=100, unique=True)
+
+    # Стилизация
+    style = models.CharField('Стиль отображения', max_length=20, choices=STYLE_CHOICES, default='default')
+    background_color = models.CharField('Цвет фона', max_length=7, default='#1f2937')
+    text_color = models.CharField('Цвет текста', max_length=7, default='#ffffff')
+    header_tag = models.CharField('Тег заголовка', max_length=2, choices=HEADER_TAG_CHOICES, default='h2')
+    image = models.ImageField('Изображение', upload_to='seo_blocks/', blank=True, null=True)
+
+    # Управление
+    is_active = models.BooleanField('Активный', default=True)
+    order = models.IntegerField('Порядок', default=0, help_text='Чем меньше число, тем выше блок')
+    show_on_home = models.BooleanField('Показывать на главной', default=True)
+    show_on_category = models.BooleanField('Показывать в категориях', default=False)
+
+    # Даты
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'SEO блок'
+        verbose_name_plural = 'SEO блоки'
+        ordering = ['order', '-created_at']
+
+    def __str__(self):
+        return self.title
+
+

@@ -1,13 +1,20 @@
 from django.shortcuts import render, get_object_or_404
 from django.contrib.auth.decorators import login_required
-from .models import UserProfile, Video, Category
+from .models import UserProfile, Video, Category, SeoBlock
+
 
 def home(request):
     categories = Category.objects.all()
-    latest_videos = Video.objects.filter(is_free=False).order_by('-id')[:12]
+
+    # Получаем активные SEO-блоки для главной
+    seo_blocks = SeoBlock.objects.filter(
+        is_active=True,
+        show_on_home=True
+    ).order_by('order')
+
     return render(request, 'core/home.html', {
         'categories': categories,
-        'latest_videos': latest_videos,
+        'seo_blocks': seo_blocks,  # Добавляем в контекст
     })
 
 @login_required
