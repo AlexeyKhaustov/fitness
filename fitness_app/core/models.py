@@ -44,9 +44,34 @@ class Video(models.Model):
         blank=True,
         verbose_name='Категории'
     )
+    # Новые поля с default значениями
+    duration = models.IntegerField('Длительность (секунды)', default=0, help_text='Длительность видео в секундах')
+    thumbnail = models.ImageField('Превью', upload_to='video_thumbs/', blank=True, null=True)
+    created_at = models.DateTimeField('Дата добавления', auto_now_add=True)
+    views = models.IntegerField('Просмотры', default=0)
+
+    class Meta:
+        verbose_name = 'Видео'
+        verbose_name_plural = 'Видео'
+        ordering = ['-created_at']
 
     def __str__(self):
         return self.title
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+        return reverse('video_detail', args=[str(self.id)])
+
+    def get_duration_display(self):
+        """Форматированная длительность (MM:SS)"""
+        minutes = self.duration // 60
+        seconds = self.duration % 60
+        return f"{minutes:02d}:{seconds:02d}"
+
+    def increment_views(self):
+        """Увеличить счетчик просмотров"""
+        self.views += 1
+        self.save(update_fields=['views'])
 
 
 class Banner(models.Model):
@@ -148,3 +173,71 @@ class SeoBlock(models.Model):
         return self.title
 
 
+class SubscriptionPlan(models.Model):
+    PERIOD_CHOICES = [
+        (1, '1 месяц'),
+        (3, '3 месяца'),
+        (12, '12 месяцев'),
+    ]
+
+    name = models.CharField('Название', max_length=100)
+    period = models.IntegerField('Период (месяцы)', choices=PERIOD_CHOICES, default=1)
+    price = models.DecimalField('Цена (руб)', max_digits=8, decimal_places=2)
+    original_price = models.DecimalField('Исходная цена', max_digits=8, decimal_places=2, null=True, blank=True)
+    description = models.TextField('Описание', blank=True)
+    is_popular = models.BooleanField('Популярный', default=False)
+    is_active = models.BooleanField('Активен', default=True)
+    order = models.IntegerField('Порядок', default=0)
+
+    class Meta:
+        verbose_name = 'Тарифный план'
+        verbose_name_plural = 'Тарифные планы'
+        ordering = ['order']
+
+    def __str__(self):
+        return f"{self.name} - {self.price}₽"
+
+    def save(self, *args, **kwargs):
+        # Автоматически рассчитываем скидку
+        if not self.original_price:
+            self.original_price = self.price * self.period
+        super().save(*args, **kwargs)
+
+    def discount_percent(self):
+        """Процент скидки"""
+        if self.original_price and self.original_price > self.price:
+            discount = ((self.original_price - self.price) / self.original_price) * 100
+            return int(discount)
+        return 0
+
+
+class UserSubscription(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subscriptions')
+    plan = models.ForeignKey(SubscriptionPlan, on_delete=models.PROTECT)
+    start_date = models.DateTimeField('Дата начала', auto_now_add=True)
+    end_date = models.DateTimeField('Дата окончания')
+    is_active = models.BooleanField('Активна', default=True)
+    payment_id = models.CharField('ID платежа', max_length=100, blank=True)
+    auto_renew = models.BooleanField('Автопродление', default=True)
+
+    class Meta:
+        verbose_name = 'Подписка пользователя'
+        verbose_name_plural = 'Подписки пользователей'
+
+    def __str__(self):
+        return f"{self.user.username} - {self.plan.name} до {self.end_date.date()}"
+
+    def save(self, *args, **kwargs):
+        # Автоматически устанавливаем дату окончания
+        if not self.end_date:
+            from datetime import datetime, timedelta
+            self.end_date = datetime.now() + timedelta(days=self.plan.period * 30)
+        super().save(*args, **kwargs)
+
+    def days_remaining(self):
+        """Дней до окончания подписки"""
+        from datetime import datetime
+        if self.end_date:
+            remaining = (self.end_date - datetime.now()).days
+            return max(0, remaining)
+        return 0

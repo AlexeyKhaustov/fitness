@@ -17,6 +17,7 @@ ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='localhost,127.0.0.1').sp
 CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8080',
     'http://127.0.0.1:8080',
+    'http://192.168.1.70:8080',
     'http://fitnessvideo.ru',
     'https://fitnessvideo.ru',
     'http://www.fitnessvideo.ru',
@@ -119,7 +120,6 @@ USE_I18N = True
 USE_TZ = True
 
 # Статические и медиафайлы
-STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -128,8 +128,8 @@ STATICFILES_DIRS = [
     BASE_DIR / 'static',  # Для разработки
 ]
 
-# Или минимально:
-STATIC_URL = 'static/'
+# минимально:
+STATIC_URL = '/static/'
 
 # Allauth настройки
 SITE_ID = 1
@@ -139,11 +139,11 @@ AUTHENTICATION_BACKENDS = [
 ]
 ACCOUNT_LOGIN_METHODS = ['email', 'username']  # Вход по email или username
 ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']  # Обязательные поля при регистрации
-ACCOUNT_LOGIN_REDIRECT_URL = '/profile/'
-ACCOUNT_SIGNUP_REDIRECT_URL = '/profile/'
+ACCOUNT_LOGIN_REDIRECT_URL = '/'
+ACCOUNT_SIGNUP_REDIRECT_URL = '/'
 ACCOUNT_LOGOUT_REDIRECT_URL = '/' # Перенаправление после выхода
 ACCOUNT_LOGOUT_ON_GET = True  # Это уберет подтверждение при выходе
-LOGIN_REDIRECT_URL = '/profile/'
+LOGIN_REDIRECT_URL = '/'
 
 
 ACCOUNT_UNIQUE_EMAIL = True
@@ -151,6 +151,15 @@ ACCOUNT_USERNAME_MIN_LENGTH = 3
 ACCOUNT_EMAIL_VERIFICATION = 'optional'  # 'mandatory' - требовать подтверждение, 'optional' - не требовать
 ACCOUNT_PRESERVE_USERNAME_CASING = False  # Приводим username к нижнему регистру
 ACCOUNT_LOGIN_ON_PASSWORD_RESET = True   # Автовход после сброса
+
+
+ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = None
+ACCOUNT_EMAIL_CONFIRMATION_ANONYMOUS_REDIRECT_URL = '/accounts/login/'
+
+# Сохранять следующий URL после входа
+ACCOUNT_SESSION_REMEMBER = True
+ACCOUNT_AUTHENTICATION_METHOD = "username_email"  # Вход по email или username
+
 
 # Настройки почты (для начала - консольный вывод)
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # консольный вывод
