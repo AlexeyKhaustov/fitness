@@ -13,18 +13,37 @@ DEBUG = config('DJANGO_DEBUG', default=True, cast=bool)
 # ALLOWED_HOSTS берется из переменной окружения
 ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 
+MESSAGE_TAGS = {
+    messages.SUCCESS: 'success',
+    messages.ERROR: 'error',
+    messages.WARNING: 'warning',
+    messages.INFO: 'info',
+}
+
 # Добавляем доверенные источники для CSRF (обязательно при работе через nginx на порту 8080)
-CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:8080',
-    'http://127.0.0.1:8080',
-    'http://192.168.1.70:8080',
-    'http://fitnessvideo.ru',
-    'https://fitnessvideo.ru',
-    'http://www.fitnessvideo.ru',
-    'https://www.fitnessvideo.ru',
-    'http://155.212.245.253',
-    'https://155.212.245.253'
-]
+CSRF_TRUSTED_ORIGINS = []
+
+for host in ALLOWED_HOSTS:
+    if host and host != '*':
+        clean_host = host.split(':')[0] if ':' in host else host
+
+        # Основные
+        CSRF_TRUSTED_ORIGINS.append(f'https://{clean_host}')
+        CSRF_TRUSTED_ORIGINS.append(f'http://{clean_host}')
+
+        # Порт 8080
+        CSRF_TRUSTED_ORIGINS.append(f'http://{clean_host}:8080')
+        CSRF_TRUSTED_ORIGINS.append(f'https://{clean_host}:8080')
+
+if DEBUG:
+    CSRF_TRUSTED_ORIGINS.extend([
+        'http://localhost:8000',
+        'http://localhost:8080',
+        'http://127.0.0.1:8000',
+        'http://127.0.0.1:8080',
+    ])
+
+CSRF_TRUSTED_ORIGINS = list(set(CSRF_TRUSTED_ORIGINS))
 
 # Приложения
 INSTALLED_APPS = [
@@ -75,8 +94,6 @@ TEMPLATES = [
 ACCOUNT_FORMS = {
     'signup': 'fitness_app.core.forms.CustomSignupForm',
     'login': 'fitness_app.core.forms.CustomLoginForm',
-    'reset_password': 'fitness_app.core.forms.CustomResetPasswordForm',
-    'reset_password_from_key': 'fitness_app.core.forms.CustomResetPasswordKeyForm',
 }
 
 WSGI_APPLICATION = 'fitness_app.wsgi.application'
@@ -94,23 +111,11 @@ DATABASES = {
 }
 
 # Валидация паролей
-# Минимальные требования к паролю
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-        'OPTIONS': {
-            'min_length': 6,  # Минимум 6 символов вместо 8
-        }
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
 # Интернационализация
@@ -120,16 +125,10 @@ USE_I18N = True
 USE_TZ = True
 
 # Статические и медиафайлы
+STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-
-STATICFILES_DIRS = [
-    BASE_DIR / 'static',  # Для разработки
-]
-
-# минимально:
-STATIC_URL = '/static/'
 
 # Allauth настройки
 SITE_ID = 1
@@ -137,46 +136,15 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
-ACCOUNT_LOGIN_METHODS = ['email', 'username']  # Вход по email или username
-ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']  # Обязательные поля при регистрации
-ACCOUNT_LOGIN_REDIRECT_URL = '/'
-ACCOUNT_SIGNUP_REDIRECT_URL = '/'
-ACCOUNT_LOGOUT_REDIRECT_URL = '/' # Перенаправление после выхода
-ACCOUNT_LOGOUT_ON_GET = True  # Это уберет подтверждение при выходе
-LOGIN_REDIRECT_URL = '/'
+ACCOUNT_LOGIN_METHODS = ['email', 'username']
+ACCOUNT_SIGNUP_FIELDS = ['email*', 'username*', 'password1*', 'password2*']
+ACCOUNT_LOGIN_REDIRECT_URL = '/profile/'
+ACCOUNT_SIGNUP_REDIRECT_URL = '/profile/'
+ACCOUNT_LOGOUT_REDIRECT_URL = '/'
+LOGIN_REDIRECT_URL = '/profile/'
 
-
-ACCOUNT_UNIQUE_EMAIL = True
-ACCOUNT_USERNAME_MIN_LENGTH = 3
-ACCOUNT_EMAIL_VERIFICATION = 'optional'  # 'mandatory' - требовать подтверждение, 'optional' - не требовать
-ACCOUNT_PRESERVE_USERNAME_CASING = False  # Приводим username к нижнему регистру
-ACCOUNT_LOGIN_ON_PASSWORD_RESET = True   # Автовход после сброса
-
-
-ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = None
-ACCOUNT_EMAIL_CONFIRMATION_ANONYMOUS_REDIRECT_URL = '/accounts/login/'
-
-# Сохранять следующий URL после входа
-ACCOUNT_SESSION_REMEMBER = True
-ACCOUNT_AUTHENTICATION_METHOD = "username_email"  # Вход по email или username
-
-
-# Настройки почты (для начала - консольный вывод)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # консольный вывод
-EMAIL_HOST = 'smtp.gmail.com'  # или ваш SMTP
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = ''  # ваш email
-EMAIL_HOST_PASSWORD = ''  # пароль приложения
-DEFAULT_FROM_EMAIL = 'noreply@fitnessvideo.ru'
-
-
-MESSAGE_TAGS = {
-    messages.SUCCESS: 'success',
-    messages.ERROR: 'error',
-    messages.WARNING: 'warning',
-    messages.INFO: 'info',
-}
+ACCOUNT_EMAIL_VERIFICATION = "none"
+ACCOUNT_EMAIL_REQUIRED = False
 
 
 # Безопасность
