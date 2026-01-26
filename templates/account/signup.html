@@ -1,19 +1,87 @@
 {% extends "account/base.html" %}
 
 {% block content %}
-<div class="text-center py-12">
+<div class="text-center">
+  <h1 class="text-2xl font-bold mb-2 text-purple-400">Fitness Video</h1>
   <h2 class="text-3xl font-bold mb-6">Регистрация</h2>
-  <p class="text-gray-400 mb-8">
-    Уже есть аккаунт? <a href="{% url 'account_login' %}" class="text-purple-400 hover:underline">Войти</a>
-  </p>
 
-  <form method="post" action="{% url 'account_signup' %}" class="max-w-md mx-auto space-y-4">
+  <div class="text-gray-400 mb-8">
+    Уже есть аккаунт?
+    <a href="{% url 'account_login' %}" class="text-purple-400 hover:underline font-medium">
+      Войти
+    </a>
+  </div>
+
+  <form method="post" action="{% url 'account_signup' %}" class="space-y-4">
     {% csrf_token %}
-    <input type="text" name="username" placeholder="Логин" required class="w-full px-4 py-3 bg-gray-700 rounded-lg">
-    <input type="email" name="email" placeholder="Email" required class="w-full px-4 py-3 bg-gray-700 rounded-lg">
-    <input type="password" name="password1" placeholder="Пароль" required class="w-full px-4 py-3 bg-gray-700 rounded-lg">
-    <input type="password" name="password2" placeholder="Повторите пароль" required class="w-full px-4 py-3 bg-gray-700 rounded-lg">
-    <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 py-3 rounded-lg font-bold mt-4">
+
+    <!-- Отображение общих ошибок формы -->
+    {% if form.non_field_errors %}
+    <div class="bg-red-900/30 border border-red-700 rounded-lg p-4 mb-4">
+      <ul class="text-sm text-red-200">
+        {% for error in form.non_field_errors %}
+        <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+
+    <!-- Поле логина -->
+    <div>
+      <input type="text" name="username" placeholder="Логин" required
+             value="{{ form.username.value|default_if_none:'' }}"
+             class="w-full px-4 py-3 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 {% if form.username.errors %}border border-red-500{% endif %}">
+      {% if form.username.errors %}
+      <div class="text-red-400 text-sm mt-1 text-left">
+        {% for error in form.username.errors %}
+        <p>{{ error }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Поле email -->
+    <div>
+      <input type="email" name="email" placeholder="Email"
+             value="{{ form.email.value|default_if_none:'' }}"
+             class="w-full px-4 py-3 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 {% if form.email.errors %}border border-red-500{% endif %}">
+      {% if form.email.errors %}
+      <div class="text-red-400 text-sm mt-1 text-left">
+        {% for error in form.email.errors %}
+        <p>{{ error }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Поле пароля -->
+    <div>
+      <input type="password" name="password1" placeholder="Пароль" required
+             class="w-full px-4 py-3 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 {% if form.password1.errors %}border border-red-500{% endif %}">
+      {% if form.password1.errors %}
+      <div class="text-red-400 text-sm mt-1 text-left">
+        {% for error in form.password1.errors %}
+        <p>{{ error }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Подтверждение пароля -->
+    <div>
+      <input type="password" name="password2" placeholder="Повторите пароль" required
+             class="w-full px-4 py-3 bg-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 {% if form.password2.errors %}border border-red-500{% endif %}">
+      {% if form.password2.errors %}
+      <div class="text-red-400 text-sm mt-1 text-left">
+        {% for error in form.password2.errors %}
+        <p>{{ error }}</p>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Кнопка отправки -->
+    <button type="submit" class="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 py-3 rounded-lg font-bold mt-6 transition-all duration-300">
       Создать аккаунт
     </button>
   </form>

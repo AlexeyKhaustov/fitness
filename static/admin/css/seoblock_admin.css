@@ -1,0 +1,85 @@
+/* static/admin/css/seoblock_admin.css */
+/* Стили для админки SEO-блоков */
+
+/* Цветные индикаторы статуса в списке */
+.field-is_active img {
+    display: none; /* Скрываем стандартные иконки */
+}
+
+.field-is_active .readonly {
+    font-weight: bold;
+}
+
+/* Иконка для активного блока */
+.is_active-true::before {
+    content: "✅ ";
+    color: #28a745;
+    font-size: 14px;
+}
+
+/* Иконка для неактивного блока */
+.is_active-false::before {
+    content: "❌ ";
+    color: #dc3545;
+    font-size: 14px;
+}
+
+/* Подсветка текущего редактируемого блока */
+.change-form .module.aligned {
+    background-color: #f8f9fa;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+/* Улучшение внешнего вид полей цвета */
+.field-background_color input,
+.field-text_color input {
+    width: 100px !important;
+    font-family: monospace;
+    text-transform: uppercase;
+}
+
+/* Предпросмотр цвета рядом с полем */
+.color-preview {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    margin-left: 10px;
+    vertical-align: middle;
+}
+
+/* Стили для поля order */
+.field-order input {
+    width: 80px !important;
+    text-align: center;
+}
+
+/* Подсказки в описаниях */
+.help {
+    color: #666;
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+/* Улучшение читаемости контента */
+.field-content textarea {
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Стили для изображения предпросмотра */
+.field-image .file-upload {
+    margin-top: 10px;
+}
+
+.field-image img {
+    max-width: 300px;
+    max-height: 200px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin-top: 10px;
+}

@@ -1,0 +1,380 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}{{ video.title }} - FitnessVideo{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-8">
+    <!-- Хлебные крошки -->
+    <nav class="mb-6 text-sm text-gray-400">
+        <a href="/" class="hover:text-purple-400">Главная</a>
+        {% for cat in video.categories.all %}
+            <span class="mx-2">/</span>
+            <a href="{{ cat.get_absolute_url }}" class="hover:text-purple-400">{{ cat.name }}</a>
+        {% endfor %}
+        <span class="mx-2">/</span>
+        <span class="text-white">{{ video.title|truncatechars:30 }}</span>
+    </nav>
+
+    <div class="flex flex-col lg:flex-row gap-8">
+        <!-- Основной контент -->
+        <div class="lg:w-2/3">
+            <!-- Видеоплеер с блокировкой для неподписанных -->
+            <div class="bg-black rounded-2xl overflow-hidden shadow-2xl mb-6 relative">
+                <div class="aspect-video">
+                    {% if not video.is_free and not user_profile.subscription_active %}
+                        <!-- БЛОКИРОВАННОЕ ВИДЕО -->
+                        <div class="relative w-full h-full">
+                            <!-- Blur эффект поверх видео -->
+                            <video
+                                id="main-video"
+                                class="w-full h-full filter blur-lg opacity-70"
+                                preload="metadata"
+                                poster="{% if video.thumbnail %}{{ video.thumbnail.url }}{% endif %}"
+                                onclick="showSubscribeModal()"
+                            >
+                                <source src="{{ video.file.url }}" type="video/mp4">
+                                Ваш браузер не поддерживает видео.
+                            </video>
+
+                            <!-- Оверлей с призывом к подписке -->
+                            <div class="absolute inset-0 flex flex-col items-center justify-center text-white p-8 text-center">
+                                <div class="mb-6">
+                                    <i class="fa-solid fa-lock text-6xl text-purple-400 mb-4"></i>
+                                    <h3 class="text-3xl font-bold mb-2">Премиум контент</h3>
+                                    <p class="text-gray-300 text-lg">Это видео доступно только по подписке</p>
+                                </div>
+
+                                <div class="bg-gradient-to-r from-purple-900/80 to-pink-900/80 backdrop-blur-sm rounded-2xl p-8 max-w-md w-full">
+                                    <h4 class="text-2xl font-bold mb-4">Получите доступ сейчас</h4>
+                                    <ul class="space-y-3 mb-6 text-left">
+                                        <li class="flex items-center">
+                                            <i class="fa-solid fa-check text-green-400 mr-3"></i>
+                                            <span>К этому и 1000+ других видео</span>
+                                        </li>
+                                        <li class="flex items-center">
+                                            <i class="fa-solid fa-check text-green-400 mr-3"></i>
+                                            <span>Безлимитный доступ ко всем категориям</span>
+                                        </li>
+                                        <li class="flex items-center">
+                                            <i class="fa-solid fa-check text-green-400 mr-3"></i>
+                                            <span>Персональные программы тренировок</span>
+                                        </li>
+                                        <li class="flex items-center">
+                                            <i class="fa-solid fa-check text-green-400 mr-3"></i>
+                                            <span>Отмена в любой момент</span>
+                                        </li>
+                                    </ul>
+                                    <button onclick="showSubscribeModal()"
+                                            class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-4 rounded-xl text-lg transition-all hover:scale-105 shadow-lg">
+                                        Разблокировать за 299₽/месяц
+                                    </button>
+                                    <p class="text-gray-300 text-sm mt-4">Нажмите в любом месте плеера для продолжения</p>
+                                </div>
+                            </div>
+
+                            <!-- Кнопка "воспроизвести" поверх блюра -->
+                            <div class="absolute inset-0 flex items-center justify-center">
+                                <button onclick="showSubscribeModal()"
+                                        class="bg-purple-600 hover:bg-purple-700 text-white p-6 rounded-full transition-all hover:scale-110 shadow-2xl">
+                                    <i class="fa-solid fa-play text-4xl"></i>
+                                </button>
+                            </div>
+                        </div>
+                    {% else %}
+                        <!-- ОТКРЫТОЕ ВИДЕО -->
+                        <video
+                            id="main-video"
+                            class="w-full h-full"
+                            controls
+                            preload="metadata"
+                            poster="{% if video.thumbnail %}{{ video.thumbnail.url }}{% endif %}"
+                        >
+                            <source src="{{ video.file.url }}" type="video/mp4">
+                            Ваш браузер не поддерживает видео.
+                        </video>
+                    {% endif %}
+                </div>
+
+                {% if not video.is_free and user_profile.subscription_active %}
+                    <div class="bg-gradient-to-r from-green-900 to-emerald-900 p-4 flex items-center">
+                        <div class="flex items-center">
+                            <i class="fa-solid fa-crown text-yellow-400 text-xl mr-3"></i>
+                            <div>
+                                <p class="text-white font-semibold">Премиум видео</p>
+                                <p class="text-gray-300 text-sm">Доступ открыт по вашей подписке</p>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <!-- Информация о видео -->
+            <div class="bg-gray-800 rounded-2xl p-6 shadow-xl mb-6">
+                <div class="flex flex-col md:flex-row md:items-start justify-between mb-6">
+                    <div>
+                        <h1 class="text-3xl font-bold text-white mb-3">{{ video.title }}</h1>
+                        <div class="flex flex-wrap gap-3 mb-4">
+                            {% for cat in video.categories.all %}
+                                <a href="{{ cat.get_absolute_url }}"
+                                   class="px-4 py-2 rounded-full text-sm font-medium {{ cat.color }} hover:opacity-90 transition-opacity">
+                                    <i class="fa-solid fa-{{ cat.icon }} mr-2"></i>
+                                    {{ cat.name }}
+                                </a>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-4 mt-4 md:mt-0">
+                        <div class="text-center">
+                            <div class="text-2xl font-bold text-white">{{ video.views }}</div>
+                            <div class="text-gray-400 text-sm">просмотров</div>
+                        </div>
+                        <button class="p-3 bg-gray-700 hover:bg-gray-600 rounded-full transition-colors">
+                            <i class="fa-regular fa-heart text-xl"></i>
+                        </button>
+                        <button class="p-3 bg-gray-700 hover:bg-gray-600 rounded-full transition-colors">
+                            <i class="fa-solid fa-share text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="prose prose-invert max-w-none">
+                    <h3 class="text-xl font-semibold text-white mb-4">Описание</h3>
+                    <p class="text-gray-300 whitespace-pre-line">{{ video.description }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Боковая панель -->
+        <div class="lg:w-1/3">
+            <!-- Похожие видео -->
+            {% if similar_videos %}
+                <div class="bg-gray-800 rounded-2xl p-6 shadow-xl mb-6">
+                    <h2 class="text-xl font-bold text-white mb-4">Похожие видео</h2>
+                    <div class="space-y-4">
+                        {% for similar in similar_videos %}
+                            <a href="{% url 'video_detail' similar.id %}"
+                               class="flex items-center bg-gray-900 hover:bg-gray-700 rounded-xl p-3 transition-colors group">
+                                <div class="relative w-24 h-16 flex-shrink-0 rounded overflow-hidden">
+                                    {% if similar.thumbnail %}
+                                        <img src="{{ similar.thumbnail.url }}"
+                                             alt="{{ similar.title }}"
+                                             class="w-full h-full object-cover group-hover:scale-105 transition-transform">
+                                    {% else %}
+                                        <div class="w-full h-full bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
+                                            <i class="fa-solid fa-play text-gray-600"></i>
+                                        </div>
+                                    {% endif %}
+                                    {% if not similar.is_free %}
+                                        <div class="absolute top-1 right-1 bg-gradient-to-br from-purple-600 to-pink-600 text-white text-xs px-2 py-0.5 rounded">
+                                            PREM
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="ml-4">
+                                    <h4 class="font-medium text-white group-hover:text-purple-400 line-clamp-2">{{ similar.title }}</h4>
+                                    <div class="flex items-center text-gray-400 text-sm mt-1">
+                                        <span>{{ similar.get_duration_display }}</span>
+                                        <span class="mx-2">•</span>
+                                        <span>{{ similar.views }} просмотров</span>
+                                    </div>
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- Информация о подписке (всегда показываем, если нет активной подписки) -->
+            {% if not user_profile.subscription_active %}
+                <div class="bg-gradient-to-br from-purple-900 via-purple-800 to-pink-900 rounded-2xl p-6 shadow-xl">
+                    <h3 class="text-xl font-bold text-white mb-3">Откройте полный доступ</h3>
+                    <p class="text-gray-200 mb-4">Подписка включает:</p>
+                    <ul class="space-y-2 mb-6">
+                        <li class="flex items-center text-gray-200">
+                            <i class="fa-solid fa-check text-green-400 mr-3"></i>
+                            <span>Все премиум видео</span>
+                        </li>
+                        <li class="flex items-center text-gray-200">
+                            <i class="fa-solid fa-check text-green-400 mr-3"></i>
+                            <span>Без рекламы</span>
+                        </li>
+                        <li class="flex items-center text-gray-200">
+                            <i class="fa-solid fa-check text-green-400 mr-3"></i>
+                            <span>Скачивание видео</span>
+                        </li>
+                        <li class="flex items-center text-gray-200">
+                            <i class="fa-solid fa-check text-green-400 mr-3"></i>
+                            <span>Персональные программы</span>
+                        </li>
+                    </ul>
+                    <button onclick="showSubscribeModal()"
+                           class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white text-center font-bold py-4 rounded-xl transition-all hover:scale-105">
+                        От 299₽/месяц
+                    </button>
+                    <p class="text-center text-gray-300 text-sm mt-3">Отмена в любой момент</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно подписки -->
+<div id="subscribe-modal" class="fixed inset-0 z-50 items-center justify-center hidden">
+    <div class="fixed inset-0 bg-black bg-opacity-80" onclick="hideSubscribeModal()"></div>
+    <div class="relative bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl shadow-2xl max-w-2xl w-full mx-4 p-0 overflow-hidden">
+        <button onclick="hideSubscribeModal()"
+                class="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl z-10">
+            <i class="fa-solid fa-times"></i>
+        </button>
+
+        <div class="p-8 md:p-12">
+            <div class="text-center mb-8">
+                <i class="fa-solid fa-crown text-5xl text-yellow-400 mb-4"></i>
+                <h2 class="text-3xl font-bold text-white mb-2">Полный доступ ко всем тренировкам</h2>
+                <p class="text-gray-300">Выберите подходящий тариф</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-gray-800 rounded-2xl p-6 border-2 border-gray-700 hover:border-purple-500 transition-colors">
+                    <h3 class="text-xl font-bold text-white mb-2">1 месяц</h3>
+                    <div class="text-3xl font-bold text-white mb-4">299₽</div>
+                    <p class="text-gray-400 text-sm mb-6">Идеально для знакомства</p>
+                    <button onclick="subscribe(1)"
+                            class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-semibold transition-colors">
+                        Выбрать
+                    </button>
+                </div>
+
+                <div class="bg-gradient-to-br from-purple-900 to-pink-900 rounded-2xl p-6 border-2 border-purple-500 relative">
+                    <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-4 py-1 rounded-full text-sm font-bold">
+                        ВЫГОДА 20%
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">3 месяца</h3>
+                    <div class="text-3xl font-bold text-white mb-1">717₽</div>
+                    <div class="text-gray-300 text-sm mb-4 line-through">897₽</div>
+                    <p class="text-gray-300 text-sm mb-6">Самый популярный вариант</p>
+                    <button onclick="subscribe(3)"
+                            class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white py-3 rounded-lg font-semibold transition-colors">
+                        Выбрать
+                    </button>
+                </div>
+
+                <div class="bg-gray-800 rounded-2xl p-6 border-2 border-gray-700 hover:border-purple-500 transition-colors">
+                    <h3 class="text-xl font-bold text-white mb-2">12 месяцев</h3>
+                    <div class="text-3xl font-bold text-white mb-1">2399₽</div>
+                    <div class="text-gray-300 text-sm mb-4 line-through">3588₽</div>
+                    <p class="text-gray-400 text-sm mb-6">Максимальная экономия</p>
+                    <button onclick="subscribe(12)"
+                            class="w-full bg-purple-600 hover:bg-purple-700 text-white py-3 rounded-lg font-semibold transition-colors">
+                        Выбрать
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-gray-800/50 rounded-xl p-6">
+                <h4 class="text-lg font-semibold text-white mb-4">Что входит в подписку:</h4>
+                <ul class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <li class="flex items-center text-gray-200">
+                        <i class="fa-solid fa-check text-green-400 mr-3"></i>
+                        <span>1000+ премиум видео</span>
+                    </li>
+                    <li class="flex items-center text-gray-200">
+                        <i class="fa-solid fa-check text-green-400 mr-3"></i>
+                        <span>Все категории тренировок</span>
+                    </li>
+                    <li class="flex items-center text-gray-200">
+                        <i class="fa-solid fa-check text-green-400 mr-3"></i>
+                        <span>Персональные программы</span>
+                    </li>
+                    <li class="flex items-center text-gray-200">
+                        <i class="fa-solid fa-check text-green-400 mr-3"></i>
+                        <span>Скачивание для оффлайн</span>
+                    </li>
+                    <li class="flex items-center text-gray-200">
+                        <i class="fa-solid fa-check text-green-400 mr-3"></i>
+                        <span>Без рекламы</span>
+                    </li>
+                    <li class="flex items-center text-gray-200">
+                        <i class="fa-solid fa-check text-green-400 mr-3"></i>
+                        <span>Новые видео каждую неделю</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="text-center mt-6">
+                <p class="text-gray-400 text-sm">Нажимая "Выбрать", вы соглашаетесь с <a href="/terms/" class="text-purple-400 hover:underline">Условиями использования</a></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Базовый скрипт для видео и модалки -->
+<script>
+// Показ/скрытие модалки подписки
+function showSubscribeModal() {
+    document.getElementById('subscribe-modal').classList.remove('hidden');
+    document.getElementById('subscribe-modal').classList.add('flex');
+}
+
+function hideSubscribeModal() {
+    document.getElementById('subscribe-modal').classList.remove('flex');
+    document.getElementById('subscribe-modal').classList.add('hidden');
+}
+
+// Симуляция подписки (позже интегрируем с платежной системой)
+function subscribe(months) {
+    const prices = {1: 299, 3: 717, 12: 2399};
+    const price = prices[months];
+
+    // Здесь будет интеграция с платежной системой
+    alert(`Вы выбрали подписку на ${months} месяц(а/ев) за ${price}₽\n\nНа этом этапе произошла бы интеграция с платежной системой (ЮKassa, CloudPayments и т.д.)`);
+
+    // После успешной оплаты:
+    // fetch('/api/subscribe/', {method: 'POST', body: JSON.stringify({months: months})})
+    // .then(response => response.json())
+    // .then(data => {
+    //     if (data.success) {
+    //         location.reload();
+    //     }
+    // });
+
+    hideSubscribeModal();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const video = document.getElementById('main-video');
+    if (video) {
+        // Сохраняем время просмотра при уходе со страницы
+        window.addEventListener('beforeunload', function() {
+            if (video.currentTime > 10) {
+                localStorage.setItem(`video_{{ video.id }}_time`, video.currentTime);
+            }
+        });
+
+        // Восстанавливаем время просмотра
+        const savedTime = localStorage.getItem(`video_{{ video.id }}_time`);
+        if (savedTime && video.controls) { // Только для доступных видео
+            video.addEventListener('loadedmetadata', function() {
+                video.currentTime = parseFloat(savedTime);
+            });
+        }
+    }
+
+    // Закрытие модалки по ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            hideSubscribeModal();
+        }
+    });
+
+    // Клик по затемненной области закрывает модалку
+    document.getElementById('subscribe-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            hideSubscribeModal();
+        }
+    });
+});
+</script>
+{% endblock %}

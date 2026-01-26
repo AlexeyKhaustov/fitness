@@ -1,0 +1,120 @@
+<!-- templates/core/partials/banner.html -->
+{% load static %}
+
+{% for banner in active_banners %}
+<div class="relative overflow-hidden rounded-2xl shadow-2xl mb-8 mx-4 lg:mx-0 group"
+     data-banner-id="{{ banner.id }}"
+     style="min-height: 300px; max-height: 600px;">
+
+    <!-- Изображение -->
+    <picture>
+        <!-- Мобильная версия -->
+        <source
+            media="(max-width: 768px)"
+            srcset="{% if banner.image_mobile %}{{ banner.image_mobile.url }}{% else %}{{ banner.image.url }}{% endif %}">
+        <!-- Десктоп версия -->
+        <img
+            src="{{ banner.image.url }}"
+            alt="{{ banner.title }}"
+            class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            loading="lazy"
+            width="1920"
+            height="600">
+    </picture>
+
+    <!-- Затемнение -->
+    <div class="absolute inset-0" style="background: {{ banner.overlay_color }};"></div>
+
+    <!-- Контент -->
+    <div class="absolute inset-0 flex items-center px-6 md:px-12 lg:px-16"
+         style="justify-content:
+                {% if banner.text_position == 'left' %}flex-start
+                {% elif banner.text_position == 'right' %}flex-end
+                {% else %}center{% endif %};">
+
+        <div class="max-w-2xl text-{% if banner.text_position == 'center' %}center{% else %}left{% endif %}"
+             style="color: {{ banner.text_color }};">
+
+            <!-- Заголовок -->
+            <h2 class="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 leading-tight">
+                {{ banner.title }}
+            </h2>
+
+            <!-- Подзаголовок -->
+            {% if banner.subtitle %}
+            <p class="text-lg md:text-xl lg:text-2xl mb-8 opacity-90 leading-relaxed">
+                {{ banner.subtitle }}
+            </p>
+            {% endif %}
+
+            <!-- Кнопка -->
+            <a href="{{ banner.button_link }}"
+               class="inline-block bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700
+                      text-white font-bold px-8 py-4 rounded-full text-lg
+                      transition-all duration-300 transform hover:scale-105 hover:shadow-2xl
+                      shadow-lg">
+                {{ banner.button_text }} <i class="fa-solid fa-arrow-right ml-2"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- Индикатор (если несколько баннеров) -->
+    {% if active_banners|length > 1 %}
+    <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+        {% for b in active_banners %}
+        <button class="w-3 h-3 rounded-full {% if b.id == banner.id %}bg-white{% else %}bg-white/50{% endif %}"
+                onclick="showBanner({{ forloop.counter0 }})"
+                aria-label="Показать баннер {{ forloop.counter }}">
+        </button>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endfor %}
+
+<!-- Скрипт для переключения баннеров -->
+<script>
+let currentBanner = 0;
+const banners = document.querySelectorAll('[data-banner-id]');
+const intervalTime = 5000; // 5 секунд
+
+function showBanner(index) {
+    banners.forEach((banner, i) => {
+        banner.classList.toggle('hidden', i !== index);
+        banner.classList.toggle('block', i === index);
+    });
+    currentBanner = index;
+}
+
+// Автопереключение
+if (banners.length > 1) {
+    setInterval(() => {
+        currentBanner = (currentBanner + 1) % banners.length;
+        showBanner(currentBanner);
+    }, intervalTime);
+
+    // Показываем только первый баннер изначально
+    showBanner(0);
+}
+</script>
+
+<style>
+/* Плавные переходы */
+[data-banner-id] {
+    transition: opacity 0.8s ease-in-out;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    [data-banner-id] {
+        min-height: 250px !important;
+        border-radius: 1rem !important;
+    }
+    [data-banner-id] h2 {
+        font-size: 2rem !important;
+    }
+    [data-banner-id] p {
+        font-size: 1rem !important;
+    }
+}
+</style>
