@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from decouple import config
+from django.contrib.messages import constants as messages
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -12,17 +13,37 @@ DEBUG = config('DJANGO_DEBUG', default=True, cast=bool)
 # ALLOWED_HOSTS берется из переменной окружения
 ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 
+MESSAGE_TAGS = {
+    messages.SUCCESS: 'success',
+    messages.ERROR: 'error',
+    messages.WARNING: 'warning',
+    messages.INFO: 'info',
+}
+
 # Добавляем доверенные источники для CSRF (обязательно при работе через nginx на порту 8080)
-CSRF_TRUSTED_ORIGINS = [
-    'http://localhost:8080',
-    'http://127.0.0.1:8080',
-    'http://fitnessvideo.ru',
-    'https://fitnessvideo.ru',
-    'http://www.fitnessvideo.ru',
-    'https://www.fitnessvideo.ru',
-    'http://155.212.245.253',
-    'https://155.212.245.253'
-]
+CSRF_TRUSTED_ORIGINS = []
+
+for host in ALLOWED_HOSTS:
+    if host and host != '*':
+        clean_host = host.split(':')[0] if ':' in host else host
+
+        # Основные
+        CSRF_TRUSTED_ORIGINS.append(f'https://{clean_host}')
+        CSRF_TRUSTED_ORIGINS.append(f'http://{clean_host}')
+
+        # Порт 8080
+        CSRF_TRUSTED_ORIGINS.append(f'http://{clean_host}:8080')
+        CSRF_TRUSTED_ORIGINS.append(f'https://{clean_host}:8080')
+
+if DEBUG:
+    CSRF_TRUSTED_ORIGINS.extend([
+        'http://localhost:8000',
+        'http://localhost:8080',
+        'http://127.0.0.1:8000',
+        'http://127.0.0.1:8080',
+    ])
+
+CSRF_TRUSTED_ORIGINS = list(set(CSRF_TRUSTED_ORIGINS))
 
 # Приложения
 INSTALLED_APPS = [
@@ -63,6 +84,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'fitness_app.core.context_processors.active_banners',
+                'fitness_app.core.context_processors.active_seo_blocks',
             ],
         },
     },
