@@ -1,7 +1,7 @@
 {% extends 'core/base.html' %}
 {% load static %}
 
-{% block title %}Главная{% endblock %}
+{% block title %}Главная - FitnessVideo{% endblock %}
 
 {% block content %}
 
@@ -14,120 +14,115 @@
     {% endif %}
 
 <div class="max-w-7xl mx-auto px-4 py-12">
-    <h1 class="text-4xl md:text-5xl font-bold text-center mb-4 bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">
-        Выбери свою тренировку
+  <!-- Заголовок -->
+  <div class="text-center mb-12">
+    <h1 class="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">
+      Выбери свою тренировку
     </h1>
-    <p class="text-center text-gray-400 mb-12 text-lg">Более 10000 :) видео профессиональных тренировок </p>
+    <p class="text-gray-400 text-lg">Тысячи видео профессиональных тренировок</p>
+  </div>
 
-    <!-- Категории -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-16">
-        {% for cat in categories %}
-        <a href="{% url 'category_detail' cat.slug %}"
-           class="group relative overflow-hidden rounded-2xl shadow-2xl transform transition-all duration-300 hover:scale-105">
-            <div class="{{ cat.color }} p-8 h-48 flex flex-col items-center justify-center text-white">
-                <i class="fa-solid fa-{{ cat.icon }} text-6xl mb-4 group-hover:animate-pulse"></i>
-                <h3 class="text-xl font-bold text-center">{{ cat.name }}</h3>
-            </div>
-            <div class="absolute inset-0 bg-black opacity-0 group-hover:opacity-30 transition-opacity"></div>
-        </a>
-        {% endfor %}
-    </div>
+  <!-- Категории -->
+  <div id="categories" class="mb-16">
+    <h2 class="text-2xl font-bold text-white mb-8 text-center">Категории тренировок</h2>
 
-    <!-- SEO блоки -->
-    {% if seo_blocks %}
-    <div class="space-y-8 mb-16">
-        {% for block in seo_blocks %}
-        <div id="{{ block.slug }}" class="seo-block seo-block-{{ block.style }} rounded-2xl shadow-2xl overflow-hidden transition-all duration-500 hover:shadow-purple-500/30"
-             style="background-color: {{ block.background_color|default:'#1f2937' }}; color: {{ block.text_color|default:'#ffffff' }}">
-
-            {% if block.style == 'image_left' %}
-            <!-- Изображение слева -->
-            <div class="flex flex-col md:flex-row items-center">
-                {% if block.image %}
-                <div class="md:w-2/5">
-                    <img src="{{ block.image.url }}"
-                         alt="{{ block.title }}"
-                         class="w-full h-64 md:h-80 object-cover">
-                </div>
-                {% endif %}
-                <div class="md:w-3/5 p-8 md:p-12">
-                    <{{ block.header_tag }} class="text-2xl md:text-3xl font-bold mb-6">
-                        {{ block.title }}
-                    </{{ block.header_tag }}>
-                    <div class="text-lg space-y-4">
-                        {{ block.content|safe }}
-                    </div>
-                </div>
-            </div>
-
-            {% elif block.style == 'image_right' %}
-            <!-- Изображение справа -->
-            <div class="flex flex-col md:flex-row-reverse items-center">
-                {% if block.image %}
-                <div class="md:w-2/5">
-                    <img src="{{ block.image.url }}"
-                         alt="{{ block.title }}"
-                         class="w-full h-64 md:h-80 object-cover">
-                </div>
-                {% endif %}
-                <div class="md:w-3/5 p-8 md:p-12">
-                    <{{ block.header_tag }} class="text-2xl md:text-3xl font-bold mb-6">
-                        {{ block.title }}
-                    </{{ block.header_tag }}>
-                    <div class="text-lg space-y-4">
-                        {{ block.content|safe }}
-                    </div>
-                </div>
-            </div>
-
-            {% elif block.style == 'centered' %}
-            <!-- Центрированный текст -->
-            <div class="text-center p-12">
-                <{{ block.header_tag }} class="text-3xl md:text-4xl font-bold mb-8">
-                    {{ block.title }}
-                </{{ block.header_tag }}>
-                <div class="max-w-3xl mx-auto text-lg leading-relaxed space-y-6">
-                    {{ block.content|safe }}
-                </div>
-            </div>
-
-            {% elif block.style == 'light' %}
-            <!-- Светлый фон -->
-            <div class="p-8 md:p-12 bg-gray-100 text-gray-900 rounded-2xl">
-                <{{ block.header_tag }} class="text-2xl md:text-3xl font-bold mb-6 text-gray-900">
-                    {{ block.title }}
-                </{{ block.header_tag }}>
-                <div class="text-lg text-gray-700 space-y-4">
-                    {{ block.content|safe }}
-                </div>
-            </div>
-
-            {% elif block.style == 'gradient' %}
-            <!-- Градиентный фон -->
-            <div class="p-8 md:p-12 bg-gradient-to-r from-purple-900 via-purple-800 to-pink-800 rounded-2xl">
-                <{{ block.header_tag }} class="text-2xl md:text-3xl font-bold mb-6">
-                    {{ block.title }}
-                </{{ block.header_tag }}>
-                <div class="text-lg space-y-4">
-                    {{ block.content|safe }}
-                </div>
-            </div>
-
-            {% else %}
-            <!-- По умолчанию (default) -->
-            <div class="p-8 md:p-12">
-                <{{ block.header_tag }} class="text-2xl md:text-3xl font-bold mb-6">
-                    {{ block.title }}
-                </{{ block.header_tag }}>
-                <div class="text-lg space-y-4">
-                    {{ block.content|safe }}
-                </div>
-            </div>
-            {% endif %}
+    <div class="categories-grid">
+      {% for cat in categories %}
+      <a href="{% url 'category_detail' cat.slug %}"
+         class="group relative overflow-hidden rounded-2xl shadow-2xl transform transition-all duration-300 hover:scale-105">
+        <div class="{{ cat.color }} p-8 h-48 flex flex-col items-center justify-center text-white">
+          <i class="fa-solid fa-{{ cat.icon }} text-5xl mb-4 group-hover:animate-pulse"></i>
+          <h3 class="text-xl font-bold text-center">{{ cat.name }}</h3>
+          <p class="text-sm opacity-80 mt-2">{{ cat.videos.count }} видео</p>
         </div>
-        {% endfor %}
+        <div class="absolute inset-0 bg-black opacity-0 group-hover:opacity-30 transition-opacity"></div>
+      </a>
+      {% empty %}
+      <div class="col-span-full text-center py-12 text-gray-500">
+        <i class="fa-solid fa-film text-5xl mb-4"></i>
+        <p>Категории пока не добавлены</p>
+      </div>
+      {% endfor %}
     </div>
-    {% endif %}
+  </div>
 
+  <!-- SEO блоки -->
+  {% if seo_blocks %}
+  <div class="space-y-8 mb-16">
+    {% for block in seo_blocks %}
+    <div class="seo-block seo-block-{{ block.style }} rounded-2xl shadow-2xl overflow-hidden"
+         style="background-color: {{ block.background_color|default:'#1f2937' }}; color: {{ block.text_color|default:'#ffffff' }}">
+
+      {% if block.style == 'image_left' %}
+      <!-- Изображение слева -->
+      <div class="flex flex-col md:flex-row items-center">
+        {% if block.image %}
+        <div class="md:w-2/5">
+          <img src="{{ block.image.url }}" alt="{{ block.title }}" class="w-full h-64 md:h-80 object-cover">
+        </div>
+        {% endif %}
+        <div class="md:w-3/5 p-8 md:p-12">
+          <{{ block.header_tag }} class="text-2xl md:text-3xl font-bold mb-6">
+            {{ block.title }}
+          </{{ block.header_tag }}>
+          <div class="text-lg space-y-4">
+            {{ block.content|safe }}
+          </div>
+        </div>
+      </div>
+
+      {% elif block.style == 'image_right' %}
+      <!-- Изображение справа -->
+      <div class="flex flex-col md:flex-row-reverse items-center">
+        {% if block.image %}
+        <div class="md:w-2/5">
+          <img src="{{ block.image.url }}" alt="{{ block.title }}" class="w-full h-64 md:h-80 object-cover">
+        </div>
+        {% endif %}
+        <div class="md:w-3/5 p-8 md:p-12">
+          <{{ block.header_tag }} class="text-2xl md:text-3xl font-bold mb-6">
+            {{ block.title }}
+          </{{ block.header_tag }}>
+          <div class="text-lg space-y-4">
+            {{ block.content|safe }}
+          </div>
+        </div>
+      </div>
+
+      {% else %}
+      <!-- Остальные стили -->
+      <div class="p-8 md:p-12">
+        <{{ block.header_tag }} class="text-2xl md:text-3xl font-bold mb-6">
+          {{ block.title }}
+        </{{ block.header_tag }}>
+        <div class="text-lg space-y-4">
+          {{ block.content|safe }}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Призыв к действию -->
+  <div class="bg-gradient-to-r from-gray-800 to-gray-900 rounded-2xl p-8 text-center">
+    <h2 class="text-2xl font-bold text-white mb-4">Начните тренироваться уже сегодня</h2>
+    <p class="text-gray-300 mb-6 max-w-2xl mx-auto">
+      Присоединяйтесь к тысячам людей, которые уже изменили свою жизнь с FitnessVideo
+    </p>
+
+    {% if user.is_authenticated %}
+    <a href="{% url 'marathon_list' %}"
+       class="inline-block bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-3 px-8 rounded-lg text-lg transition-all hover:scale-105">
+      Смотреть марафоны
+    </a>
+    {% else %}
+    <button hx-get="/accounts/signup/" hx-target="#modal-content" hx-swap="innerHTML"
+            class="inline-block bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-3 px-8 rounded-lg text-lg transition-all hover:scale-105">
+      Начать бесплатно
+    </button>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}

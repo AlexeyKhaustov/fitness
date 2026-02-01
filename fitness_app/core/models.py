@@ -34,21 +34,33 @@ class Category(models.Model):
 
 
 class Video(models.Model):
-    title = models.CharField(max_length=100)
-    file = models.FileField(upload_to='videos/')
-    description = models.TextField()
-    is_free = models.BooleanField(default=False)
+    title = models.CharField('Название', max_length=100)
+    file = models.FileField('Файл', upload_to='videos/%Y/%m/')
+    description = models.TextField('Описание')
+    is_free = models.BooleanField('Бесплатное', default=False)
     categories = models.ManyToManyField(
         Category,
         related_name='videos',
         blank=True,
         verbose_name='Категории'
     )
-    # Новые поля с default значениями
-    duration = models.IntegerField('Длительность (секунды)', default=0, help_text='Длительность видео в секундах')
-    thumbnail = models.ImageField('Превью', upload_to='video_thumbs/', blank=True, null=True)
+    duration = models.IntegerField('Длительность (секунды)', default=0)
+    thumbnail = models.ImageField('Превью', upload_to='video_thumbs/%Y/%m/', blank=True, null=True)
     created_at = models.DateTimeField('Дата добавления', auto_now_add=True)
     views = models.IntegerField('Просмотры', default=0)
+
+    # Новые поля для социальных функций (только для бесплатных видео)
+    allow_comments = models.BooleanField('Разрешить комментарии', default=True)
+    allow_sharing = models.BooleanField('Разрешить репост', default=True)
+    allow_likes = models.BooleanField('Разрешить лайки', default=True)
+
+    # Для премиум видео отключаем социальные функции
+    def save(self, *args, **kwargs):
+        if not self.is_free:
+            self.allow_comments = False
+            self.allow_sharing = False
+            self.allow_likes = False
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = 'Видео'
@@ -59,19 +71,73 @@ class Video(models.Model):
         return self.title
 
     def get_absolute_url(self):
-        from django.urls import reverse
         return reverse('video_detail', args=[str(self.id)])
 
     def get_duration_display(self):
-        """Форматированная длительность (MM:SS)"""
         minutes = self.duration // 60
         seconds = self.duration % 60
         return f"{minutes:02d}:{seconds:02d}"
 
     def increment_views(self):
-        """Увеличить счетчик просмотров"""
         self.views += 1
         self.save(update_fields=['views'])
+
+    def likes_count(self):
+        return self.comments.filter(is_like=True).count()
+
+    def comments_count(self):
+        return self.comments.filter(is_like=False).count()
+
+
+class VideoComment(models.Model):
+    """Комментарии к видео (только для бесплатных видео)"""
+    video = models.ForeignKey(
+        Video,
+        on_delete=models.CASCADE,
+        related_name='comments',
+        verbose_name='Видео'
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='video_comments',
+        verbose_name='Пользователь'
+    )
+    text = models.TextField('Текст комментария', max_length=1000)
+    is_like = models.BooleanField('Это лайк', default=False)
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    # Модерация
+    is_approved = models.BooleanField('Одобрен', default=True)
+    is_edited = models.BooleanField('Редактировался', default=False)
+
+    class Meta:
+        verbose_name = 'Комментарий к видео'
+        verbose_name_plural = 'Комментарии к видео'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['video', 'created_at']),
+            models.Index(fields=['user', 'created_at']),
+        ]
+
+    def __str__(self):
+        if self.is_like:
+            return f"Лайк от {self.user.username} к видео {self.video.title}"
+        return f"Комментарий от {self.user.username} к видео {self.video.title}"
+
+    def save(self, *args, **kwargs):
+        # Проверяем, что комментарии разрешены для этого видео
+        if not self.video.allow_comments and not self.is_like:
+            raise ValueError("Комментарии запрещены для этого видео")
+        if not self.video.allow_likes and self.is_like:
+            raise ValueError("Лайки запрещены для этого видео")
+
+        # Отмечаем как отредактированный
+        if self.pk:
+            self.is_edited = True
+
+        super().save(*args, **kwargs)
 
 
 class Banner(models.Model):
@@ -241,3 +307,176 @@ class UserSubscription(models.Model):
             remaining = (self.end_date - datetime.now()).days
             return max(0, remaining)
         return 0
+
+
+class Marathon(models.Model):
+    """Марафон - только разовая покупка, НЕ по подписке"""
+    title = models.CharField('Название марафона', max_length=200)
+    slug = models.SlugField('URL', max_length=200, unique=True)
+
+    # Описание для продающей страницы
+    short_description = models.CharField('Краткое описание', max_length=300, blank=True)
+    full_description = models.TextField('Полное описание', blank=True)
+
+    # Визуал
+    thumbnail = models.ImageField('Превью', upload_to='marathons/', blank=True)
+    banner_color = models.CharField('Цвет баннера', max_length=7, default='#6366f1',
+                                    help_text='HEX цвет (например: #6366f1 для фиолетового)')
+
+    # Цена и доступ (ТОЛЬКО разовая покупка)
+    price = models.DecimalField('Цена', max_digits=10, decimal_places=2, default=0)
+
+    # Связи
+    teaser_videos = models.ManyToManyField(  # ← ИЗМЕНИЛИ НАЗВАНИЕ
+        Video,
+        related_name='marathon_teasers',
+        blank=True,
+        verbose_name='Тизерные видео',
+        help_text='БЕСПЛАТНЫЕ видео для ознакомления с марафоном. Эти видео будут видны всем пользователям до покупки.'
+    )
+
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='marathons',
+        verbose_name='Связанная категория',
+        help_text='Для навигации (необязательно)'
+    )
+
+    # Управление
+    is_active = models.BooleanField('Активен', default=True)
+    is_featured = models.BooleanField('Рекомендуемый', default=False)
+    order = models.IntegerField('Порядок', default=0)
+
+    # Статистика
+    sales_count = models.IntegerField('Продано', default=0, editable=False)
+
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Марафон'
+        verbose_name_plural = 'Марафоны'
+        ordering = ['order', '-created_at']
+
+    def __str__(self):
+        return self.title
+
+    def get_absolute_url(self):
+        return reverse('marathon_detail', args=[self.slug])
+
+    def teaser_videos_count(self):
+        """Количество бесплатных тизерных видео"""
+        return self.teaser_videos.filter(is_free=True).count()
+
+    def marathon_videos_count(self):
+        """Количество эксклюзивных видео марафона"""
+        return self.marathon_videos.count()
+
+    def total_videos_count(self):
+        """Общее количество видео (тизеры + эксклюзивные)"""
+        return self.teaser_videos_count() + self.marathon_videos_count()
+
+    def get_duration_minutes(self):
+        """Общая длительность всех эксклюзивных видео в минутах"""
+        total_seconds = self.marathon_videos.aggregate(total=models.Sum('duration'))['total'] or 0
+        return total_seconds // 60
+
+    def increment_sales(self):
+        """Увеличить счетчик продаж"""
+        self.sales_count += 1
+        self.save(update_fields=['sales_count'])
+
+
+class MarathonAccess(models.Model):
+    """Доступ пользователя к марафону (покупка)"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='marathon_accesses')
+    marathon = models.ForeignKey(Marathon, on_delete=models.CASCADE, related_name='accesses')
+
+    # Платежная информация
+    purchased_at = models.DateTimeField('Дата покупки', auto_now_add=True)
+    amount_paid = models.DecimalField('Сумма оплаты', max_digits=10, decimal_places=2)
+    payment_id = models.CharField('ID платежа', max_length=100, blank=True)
+
+    # Статус
+    is_active = models.BooleanField('Активен', default=True)
+
+    # Ограничение по времени (если нужно)
+    valid_until = models.DateTimeField('Действует до', null=True, blank=True)
+
+    class Meta:
+        unique_together = ['user', 'marathon']
+        verbose_name = 'Доступ к марафону'
+        verbose_name_plural = 'Доступы к марафонам'
+        ordering = ['-purchased_at']
+
+    def __str__(self):
+        return f"{self.user.username} → {self.marathon.title}"
+
+    def is_valid(self):
+        """Проверяет, действует ли доступ"""
+        if not self.is_active:
+            return False
+        if self.valid_until and timezone.now() > self.valid_until:
+            return False
+        return True
+
+    def days_remaining(self):
+        """Осталось дней доступа"""
+        if self.valid_until:
+            remaining = (self.valid_until - timezone.now()).days
+            return max(0, remaining)
+        return None  # Бессрочный доступ
+
+
+class MarathonVideo(models.Model):
+    """Видео, доступное только через покупку марафона"""
+    marathon = models.ForeignKey(
+        Marathon,
+        on_delete=models.CASCADE,
+        related_name='marathon_videos',
+        verbose_name='Марафон'
+    )
+
+    title = models.CharField('Название', max_length=200)
+    file = models.FileField('Файл', upload_to='marathon_videos/%Y/%m/')
+    description = models.TextField('Описание', blank=True)
+    duration = models.IntegerField('Длительность (секунды)', default=0)
+    thumbnail = models.ImageField('Превью', upload_to='marathon_thumbs/%Y/%m/', blank=True, null=True)
+    order = models.IntegerField('Порядок', default=0)
+
+    # Статистика
+    views = models.IntegerField('Просмотры', default=0)
+
+    # Для видео марафонов ВСЕГДА отключаем социальные функции
+    allow_comments = models.BooleanField('Разрешить комментарии', default=False)
+    allow_sharing = models.BooleanField('Разрешить репост', default=False)
+    allow_likes = models.BooleanField('Разрешить лайки', default=False)
+
+    created_at = models.DateTimeField('Дата добавления', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Видео марафона'
+        verbose_name_plural = 'Видео марафонов'
+        ordering = ['marathon', 'order', 'created_at']
+
+    def __str__(self):
+        return f"{self.marathon.title}: {self.title}"
+
+    def get_absolute_url(self):
+        return reverse('marathon_video_detail', kwargs={
+            'marathon_slug': self.marathon.slug,
+            'video_id': self.id
+        })
+
+    def get_duration_display(self):
+        minutes = self.duration // 60
+        seconds = self.duration % 60
+        return f"{minutes:02d}:{seconds:02d}"
+
+    def increment_views(self):
+        self.views += 1
+        self.save(update_fields=['views'])

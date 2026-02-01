@@ -1,0 +1,278 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Мои марафоны{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-12">
+    <!-- Заголовок -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-white mb-2">Мои марафоны</h1>
+            <p class="text-gray-400">
+                {% if user_accessible_marathons %}
+                Доступно марафонов: <span class="text-green-400 font-bold">{{ user_accessible_marathons }}</span> из <span class="text-white">{{ total_marathons }}</span>
+                {% else %}
+                Программы тренировок, доступные вам
+                {% endif %}
+            </p>
+        </div>
+
+        <div class="flex gap-3 mt-4 md:mt-0">
+            <a href="{% url 'marathon_list' %}"
+               class="bg-gray-700 hover:bg-gray-600 text-white px-5 py-2.5 rounded-lg font-semibold transition-colors">
+                <i class="fa-solid fa-list mr-2"></i>
+                Все марафоны
+            </a>
+
+            {% if not user_profile.subscription_active %}
+            <a href="{% url 'profile' %}"
+               class="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white px-5 py-2.5 rounded-lg font-semibold transition-colors">
+                <i class="fa-solid fa-crown mr-2"></i>
+                Оформить подписку
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Купленные марафоны -->
+    {% if marathon_accesses %}
+    <div class="mb-12">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold text-white">Приобретенные марафоны</h2>
+            <span class="text-gray-400 text-sm">
+                {{ marathon_accesses|length }} из {{ purchased_marathons_count|default:"0" }}
+            </span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for access in marathon_accesses %}
+            <div class="bg-gray-800 rounded-2xl p-6 border-2 border-green-700/30 hover:border-green-600 transition-colors">
+                <!-- Шапка -->
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="text-xl font-bold text-white">{{ access.marathon.title }}</h3>
+                        <span class="text-green-400 text-sm font-semibold">
+                            <i class="fa-solid fa-cart-shopping mr-1"></i>
+                            Куплен
+                        </span>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold text-green-400">{{ access.amount_paid }}₽</div>
+                        <div class="text-gray-400 text-sm">{{ access.purchased_at|date:"d.m.Y" }}</div>
+                    </div>
+                </div>
+
+                <!-- Описание -->
+                {% if access.marathon.short_description %}
+                <p class="text-gray-300 mb-6 line-clamp-2">{{ access.marathon.short_description }}</p>
+                {% endif %}
+
+                <!-- Статистика -->
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <div class="text-center p-3 bg-gray-900/50 rounded-lg">
+                        <div class="text-lg font-bold text-white">{{ access.marathon.total_videos_count }}</div>
+                        <div class="text-xs text-gray-400">видео</div>
+                    </div>
+
+                    {% if access.marathon.get_duration_minutes %}
+                    <div class="text-center p-3 bg-gray-900/50 rounded-lg">
+                        <div class="text-lg font-bold text-white">{{ access.marathon.get_duration_minutes }}</div>
+                        <div class="text-xs text-gray-400">минут</div>
+                    </div>
+                    {% endif %}
+
+                    {% if access.valid_until %}
+                    <div class="col-span-2 text-center p-3 bg-gray-900/50 rounded-lg">
+                        <div class="text-sm text-gray-400">Доступ до</div>
+                        <div class="text-lg font-bold {% if access.days_remaining < 7 %}text-red-400{% else %}text-yellow-400{% endif %}">
+                            {{ access.valid_until|date:"d.m.Y" }}
+                        </div>
+                        {% if access.days_remaining %}
+                        <div class="text-xs text-gray-400">осталось {{ access.days_remaining }} дней</div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- Кнопки -->
+                <div class="flex gap-3">
+                    <a href="{{ access.marathon.get_absolute_url }}"
+                       class="flex-1 bg-green-600 hover:bg-green-700 text-white text-center py-2.5 rounded-lg font-semibold transition-colors">
+                        <i class="fa-solid fa-play mr-2"></i>
+                        Продолжить
+                    </a>
+
+                    <button onclick="shareMarathon('{{ access.marathon.slug }}')"
+                            class="px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                            title="Поделиться">
+                        <i class="fa-solid fa-share"></i>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Марафоны по подписке -->
+    {% if user_profile.subscription_active and subscribed_marathons_count > 0 %}
+    <div class="mb-12">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h2 class="text-2xl font-bold text-white">Доступные по подписке</h2>
+                <p class="text-gray-400 text-sm">
+                    {{ subscribed_marathons_count }} марафонов включены в вашу подписку
+                </p>
+            </div>
+            <span class="bg-purple-600 text-white text-sm font-bold px-3 py-1.5 rounded-full">
+                <i class="fa-solid fa-crown mr-1"></i>
+                По подписке
+            </span>
+        </div>
+
+        {% if subscribed_marathons %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for marathon in subscribed_marathons %}
+            <div class="bg-gray-800 rounded-2xl p-6 border-2 border-purple-700/30 hover:border-purple-600 transition-colors">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-xl font-bold text-white">{{ marathon.title }}</h3>
+                    <span class="bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded">
+                        FREE
+                    </span>
+                </div>
+
+                {% if marathon.short_description %}
+                <p class="text-gray-300 mb-4 line-clamp-2">{{ marathon.short_description }}</p>
+                {% endif %}
+
+                <div class="flex items-center text-gray-400 text-sm mb-6">
+                    <span class="mr-4">
+                        <i class="fa-solid fa-video mr-1"></i>
+                        {{ marathon.total_videos_count }}
+                    </span>
+                    {% if marathon.get_duration_minutes %}
+                    <span>
+                        <i class="fa-solid fa-clock mr-1"></i>
+                        {{ marathon.get_duration_minutes }} мин
+                    </span>
+                    {% endif %}
+                </div>
+
+                <a href="{{ marathon.get_absolute_url }}"
+                   class="block w-full bg-purple-600 hover:bg-purple-700 text-white text-center py-2.5 rounded-lg font-semibold transition-colors">
+                    <i class="fa-solid fa-arrow-right mr-2"></i>
+                    Открыть марафон
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-gray-800 rounded-2xl p-8 text-center">
+            <i class="fa-solid fa-crown text-4xl text-purple-500 mb-4"></i>
+            <h3 class="text-xl font-bold text-gray-400 mb-2">Нет доступных марафонов по подписке</h3>
+            <p class="text-gray-500">Новые марафоны появятся здесь автоматически</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Нет марафонов -->
+    {% if not marathon_accesses and not user_profile.subscription_active %}
+    <div class="bg-gray-800 rounded-2xl p-12 text-center">
+        <i class="fa-solid fa-calendar-check text-5xl text-gray-600 mb-4"></i>
+        <h3 class="text-xl font-bold text-gray-400 mb-2">У вас пока нет марафонов</h3>
+        <p class="text-gray-500 mb-6 max-w-md mx-auto">
+            Приобретайте отдельные марафоны или оформите подписку для доступа ко всем программам
+        </p>
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <a href="{% url 'marathon_list' %}"
+               class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+                <i class="fa-solid fa-fire mr-2"></i>
+                Посмотреть марафоны
+            </a>
+            <a href="{% url 'profile' %}"
+               class="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors">
+                <i class="fa-solid fa-crown mr-2"></i>
+                Оформить подписку
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Прогресс -->
+    {% if user_accessible_marathons and total_marathons %}
+    <div class="mt-12 p-6 bg-gray-900 rounded-2xl">
+        <h3 class="text-lg font-bold text-white mb-4">Ваш прогресс</h3>
+        <div class="mb-4">
+            <div class="flex justify-between text-sm text-gray-400 mb-2">
+                <span>Пройдено марафонов</span>
+                <span>{{ user_accessible_marathons }} / {{ total_marathons }}</span>
+            </div>
+            <div class="h-3 bg-gray-800 rounded-full overflow-hidden">
+                <div class="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full"
+                     style="width: {% widthratio user_accessible_marathons total_marathons 100 %}%">
+                </div>
+            </div>
+        </div>
+        <p class="text-gray-400 text-sm">
+            {% widthratio user_accessible_marathons total_marathons 100 %}% всех марафонов доступны вам
+        </p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Функция поделиться марафоном
+function shareMarathon(slug) {
+    const url = `${window.location.origin}/marathon/${slug}/`;
+    const title = 'Посмотри этот фитнес-марафон!';
+
+    if (navigator.share) {
+        navigator.share({
+            title: title,
+            url: url,
+        })
+        .then(() => console.log('Успешно поделились'))
+        .catch(error => console.log('Ошибка:', error));
+    } else {
+        // Копируем в буфер обмена
+        navigator.clipboard.writeText(url)
+            .then(() => {
+                alert('Ссылка скопирована в буфер обмена!');
+            })
+            .catch(err => {
+                console.error('Ошибка копирования:', err);
+                prompt('Скопируйте ссылку:', url);
+            });
+    }
+}
+
+// Анимация появления
+document.addEventListener('DOMContentLoaded', function() {
+    const cards = document.querySelectorAll('.bg-gray-800.rounded-2xl');
+    cards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.1}s`;
+        card.classList.add('animate-fade-in');
+    });
+});
+</script>
+
+<style>
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+    opacity: 0;
+}
+
+.line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+</style>
+{% endblock %}

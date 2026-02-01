@@ -7,56 +7,470 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/htmx.org@1.9.10"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+  <style>
+    /* Выпадающие меню с плавной анимацией */
+.dropdown-group {
+    position: relative;
+}
+
+.dropdown-group:hover .dropdown-content {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-content {
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    position: absolute;
+    z-index: 50;
+}
+
+/* Невидимая зона для плавного перехода курсора */
+.dropdown-bridge {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 12px;
+    top: 100%;
+}
+
+/* Анимация иконок в меню */
+.menu-icon {
+    transition: transform 0.2s ease;
+}
+
+.menu-item:hover .menu-icon {
+    transform: scale(1.1);
+}
+
+/* Категории на главной - фиксим адаптивность */
+.categories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1.5rem;
+}
+
+@media (max-width: 640px) {
+    .categories-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .categories-grid {
+        grid-template-columns: repeat(5, 1fr);
+    }
+}
+
+    /* Категории на главной - фиксим адаптивность */
+    .categories-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 640px) {
+      .categories-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .categories-grid {
+        grid-template-columns: repeat(5, 1fr);
+      }
+    }
+
+    /* Выпадающее меню */
+    .dropdown:hover .dropdown-menu {
+      display: block;
+    }
+
+    .dropdown-menu {
+      display: none;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
 </head>
 <body class="bg-gray-900 text-white min-h-screen flex flex-col">
 
   <!-- Шапка -->
-  <header class="bg-gray-800 shadow-lg sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-      <a href="/" class="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">
-        FitnessVideo
-      </a>
-      <nav class="flex items-center gap-6">
-        {% if request.path != '/' %}
-          <a href="/" class="hover:text-purple-400 transition">Home</a>
-        {% endif %}
+  <header class="bg-gray-800 shadow-lg sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4">
+      <!-- Мобильное меню -->
+      <div class="md:hidden py-4 flex justify-between items-center">
+        <a href="/" class="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">
+          FitnessVideo
+        </a>
+        <button id="mobile-menu-button" class="text-white p-2">
+          <i class="fa-solid fa-bars text-xl"></i>
+        </button>
+      </div>
+
+      <!-- Десктопная навигация -->
+        <div class="hidden md:flex justify-between items-center py-4">
+            <!-- Логотип -->
+            <a href="/" class="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent hover:opacity-90">
+                FitnessVideo
+            </a>
+
+            <!-- Навигация -->
+            <nav class="flex items-center gap-6">
+                <!-- Главная -->
+                {% if request.path != '/' %}
+                <a href="/" class="hover:text-purple-400 transition">
+                    Главная
+                </a>
+                {% endif %}
+
+                <!-- Марафоны -->
+                <a href="{% url 'marathon_list' %}" class="hover:text-purple-400 transition relative">
+                    Марафоны
+                    {% if user.is_authenticated and user_accessible_marathons and user_accessible_marathons > 0 %}
+                    <span class="absolute -top-2 -right-2 bg-green-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                        {{ user_accessible_marathons }}
+                    </span>
+                    {% endif %}
+                </a>
+
+                <!-- Категории (выпадающее меню) -->
+                <div class="dropdown relative group">
+                    <button class="hover:text-purple-400 transition flex items-center">
+                        Категории
+                        <i class="fa-solid fa-chevron-down ml-1 text-xs"></i>
+                    </button>
+
+                    <!-- Невидимая зона для плавного перехода -->
+                    <div class="absolute left-0 right-0 h-3 top-full"></div>
+
+                    <div class="dropdown-menu absolute left-0 top-full mt-3 w-64 bg-gray-800 rounded-lg shadow-xl py-2 z-50
+                                opacity-0 invisible group-hover:opacity-100 group-hover:visible
+                                transition-all duration-300 transform -translate-y-3 group-hover:translate-y-0">
+                        {% for category in categories|slice:":8" %}
+                        <a href="{{ category.get_absolute_url }}"
+                           class="block px-4 py-3 hover:bg-purple-600 hover:text-white transition flex items-center group/item">
+                            <i class="fa-solid fa-{{ category.icon|default:'film' }} mr-3 text-{{ category.color|slice:'17:22'|default:'purple' }}-400
+                                     group-hover/item:scale-110 transition-transform"></i>
+                            {{ category.name }}
+                        </a>
+                        {% endfor %}
+
+                        {% if categories.count > 8 %}
+                        <div class="border-t border-gray-700 my-2"></div>
+                        <a href="/#categories" class="block px-4 py-3 hover:bg-purple-600 hover:text-white transition text-center text-sm">
+                            <i class="fa-solid fa-ellipsis mr-2"></i>
+                            Все категории на главной
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Авторизация -->
+                {% if user.is_authenticated %}
+                <!-- Профиль (выпадающее меню) -->
+                <div class="dropdown relative group">
+                    <button class="hover:text-purple-400 transition flex items-center">
+                        <div class="relative">
+                            <i class="fa-solid fa-user-circle text-xl mr-2"></i>
+                            {% if user_profile.subscription_active %}
+                            <div class="absolute -top-1 -right-1 bg-green-500 text-white text-[8px] rounded-full h-4 w-4 flex items-center justify-center">
+                                <i class="fa-solid fa-crown"></i>
+                            </div>
+                            {% endif %}
+                        </div>
+                        Профиль
+                        <i class="fa-solid fa-chevron-down ml-1 text-xs"></i>
+                    </button>
+
+                    <!-- Невидимая зона для плавного перехода -->
+                    <div class="absolute left-0 right-0 h-3 top-full"></div>
+
+                    <div class="dropdown-menu absolute right-0 top-full mt-3 w-56 bg-gray-800 rounded-lg shadow-xl py-2 z-50
+                                opacity-0 invisible group-hover:opacity-100 group-hover:visible
+                                transition-all duration-300 transform -translate-y-3 group-hover:translate-y-0">
+                        <div class="px-4 py-3 border-b border-gray-700">
+                            <div class="font-semibold truncate">{{ user.username }}</div>
+                            {% if user_profile.subscription_active %}
+                            <div class="text-green-400 text-sm mt-1">
+                                <i class="fa-solid fa-crown mr-1"></i>Подписка активна
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <a href="/profile/" class="block px-4 py-3 hover:bg-purple-600 hover:text-white transition">
+                            <i class="fa-solid fa-user mr-3"></i>
+                            Мой профиль
+                        </a>
+
+                        {% if purchased_marathons_count and purchased_marathons_count > 0 %}
+                        <a href="{% url 'my_marathons' %}" class="block px-4 py-3 hover:bg-purple-600 hover:text-white transition">
+                            <i class="fa-solid fa-fire mr-3"></i>
+                            Мои марафоны
+                            <span class="float-right bg-green-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                                {{ purchased_marathons_count }}
+                            </span>
+                        </a>
+                        {% endif %}
+
+                        <div class="border-t border-gray-700 my-2"></div>
+
+                        <form method="post" action="{% url 'account_logout' %}" class="block">
+                            {% csrf_token %}
+                            <button type="submit" class="w-full text-left px-4 py-3 hover:bg-red-600 hover:text-white transition">
+                                <i class="fa-solid fa-sign-out mr-3"></i>
+                                Выйти
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                {% else %}
+                <!-- Для неавторизованных -->
+                <div class="flex items-center gap-4">
+                    <button hx-get="/accounts/login/" hx-target="#modal-content" hx-swap="innerHTML"
+                            class="hover:text-purple-400 transition">
+                        Войти
+                    </button>
+
+                    <button hx-get="/accounts/signup/" hx-target="#modal-content" hx-swap="innerHTML"
+                            class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-4 py-2 rounded-lg transition">
+                        Регистрация
+                    </button>
+                </div>
+                {% endif %}
+            </nav>
+        </div>
+    </div>
+
+    <!-- Мобильное меню (скрытое) -->
+    <div id="mobile-menu" class="md:hidden bg-gray-800 border-t border-gray-700 hidden
+                            transform transition-all duration-300 opacity-0">
+        <div class="px-4 py-3 space-y-1">
+            {% if request.path != '/' %}
+            <a href="/" class="block py-2 px-4 hover:bg-purple-600 hover:text-white rounded transition">
+                Главная
+            </a>
+            {% endif %}
+
+        <a href="{% url 'marathon_list' %}" class="block py-2 px-4 hover:bg-purple-600 hover:text-white rounded transition flex items-center justify-between">
+            <span>Марафоны</span>
+            {% if user.is_authenticated and user_accessible_marathons and user_accessible_marathons > 0 %}
+            <span class="bg-green-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {{ user_accessible_marathons }}
+            </span>
+            {% endif %}
+        </a>
+
+        <!-- Категории в мобильном меню -->
+        <div class="py-2 px-4">
+            <button id="mobile-categories-toggle"
+                    class="w-full text-left flex items-center justify-between text-gray-400 hover:text-white transition">
+                <span>Категории</span>
+                <i class="fa-solid fa-chevron-down transition-transform duration-300"></i>
+            </button>
+
+            <div id="mobile-categories" class="mt-2 hidden">
+                <div class="grid grid-cols-2 gap-2">
+                    {% for category in categories|slice:":6" %}
+                    <a href="{{ category.get_absolute_url }}"
+                       class="text-center py-2 bg-gray-700 hover:bg-purple-600 rounded text-sm transition">
+                        {{ category.name }}
+                    </a>
+                    {% endfor %}
+                </div>
+                {% if categories.count > 6 %}
+                <a href="/#categories"
+                   class="block mt-2 text-center text-sm text-purple-400 hover:text-purple-300">
+                    Все категории →
+                </a>
+                {% endif %}
+            </div>
+        </div>
 
         {% if user.is_authenticated %}
-          <a href="/profile/" class="hover:text-purple-400 transition">Профиль</a>
-          <form method="post" action="{% url 'account_logout' %}" class="inline">
+        <div class="border-t border-gray-700 pt-3 mt-3">
+          <div class="px-4 py-2 text-gray-400 text-sm">
+            {{ user.username }}
+          </div>
+
+          <a href="/profile/" class="block py-2 px-4 hover:bg-purple-600 hover:text-white rounded">
+            Мой профиль
+          </a>
+
+          {% if purchased_marathons_count and purchased_marathons_count > 0 %}
+          <a href="{% url 'my_marathons' %}" class="block py-2 px-4 hover:bg-purple-600 hover:text-white rounded flex items-center justify-between">
+            <span>Мои марафоны</span>
+            <span class="bg-green-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+              {{ purchased_marathons_count }}
+            </span>
+          </a>
+          {% endif %}
+
+          <form method="post" action="{% url 'account_logout' %}">
             {% csrf_token %}
-            <button type="submit" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg transition">
+            <button type="submit" class="w-full text-left block py-2 px-4 hover:bg-red-600 hover:text-white rounded">
               Выйти
             </button>
           </form>
+        </div>
         {% else %}
+        <div class="border-t border-gray-700 pt-3 mt-3">
           <button hx-get="/accounts/login/" hx-target="#modal-content" hx-swap="innerHTML"
-                  class="hover:text-purple-400 transition">Войти</button>
+                  class="w-full text-left block py-2 px-4 hover:bg-purple-600 hover:text-white rounded">
+            Войти
+          </button>
+
           <button hx-get="/accounts/signup/" hx-target="#modal-content" hx-swap="innerHTML"
-                  class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition">Регистрация</button>
+                  class="w-full text-left block py-2 px-4 mt-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white rounded">
+            Регистрация
+          </button>
+        </div>
         {% endif %}
-      </nav>
+      </div>
     </div>
   </header>
 
+  <!-- Основной контент -->
   <main class="flex-1">
     {% block content %}{% endblock %}
   </main>
 
-  <!-- Модальное окно -->
+  <!-- Подвал -->
+  <footer class="bg-gray-800 border-t border-gray-700 mt-16">
+    <div class="max-w-7xl mx-auto px-4 py-8">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <!-- Лого и описание -->
+        <div class="md:col-span-2">
+          <a href="/" class="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">
+            FitnessVideo
+          </a>
+          <p class="text-gray-400 mt-4 max-w-md">
+            Онлайн-платформа для фитнес-тренировок.
+            Профессиональные программы, марафоны и индивидуальный подход.
+          </p>
+        </div>
+
+        <!-- Навигация -->
+        <div>
+          <h3 class="text-lg font-bold text-white mb-4">Навигация</h3>
+          <ul class="space-y-2">
+            <li><a href="/" class="text-gray-400 hover:text-purple-400">Главная</a></li>
+            <li><a href="{% url 'marathon_list' %}" class="text-gray-400 hover:text-purple-400">Марафоны</a></li>
+            <li><a href="/#categories" class="text-gray-400 hover:text-purple-400">Категории</a></li>
+            {% if user.is_authenticated %}
+            <li><a href="/profile/" class="text-gray-400 hover:text-purple-400">Профиль</a></li>
+            {% if purchased_marathons_count and purchased_marathons_count > 0 %}
+            <li><a href="{% url 'my_marathons' %}" class="text-gray-400 hover:text-purple-400">Мои марафоны</a></li>
+            {% endif %}
+            {% endif %}
+          </ul>
+        </div>
+
+        <!-- Контакты -->
+        <div>
+          <h3 class="text-lg font-bold text-white mb-4">Контакты</h3>
+          <ul class="space-y-2 text-gray-400">
+            <li class="flex items-center">
+              <i class="fa-solid fa-envelope mr-3 text-purple-400"></i>
+              <span>support@fitnessvideo.ru</span>
+            </li>
+            <li class="flex items-center">
+              <i class="fa-solid fa-phone mr-3 text-purple-400"></i>
+              <span>8 (800) 123-45-67</span>
+            </li>
+          </ul>
+
+          <!-- Кнопка подписки в футере (только если нет подписки) -->
+          {% if user.is_authenticated and not user_profile.subscription_active %}
+          <div class="mt-6">
+            <a href="{% url 'profile' %}"
+               class="inline-block bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+              Оформить подписку
+            </a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Копирайт -->
+      <div class="border-t border-gray-700 mt-8 pt-8 text-center text-gray-500 text-sm">
+        <p>© 2024 FitnessVideo. Все права защищены.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Модальные окна (остаются как были) -->
   <div id="modal" class="fixed inset-0 z-50 items-center justify-center hidden">
-    <div class="fixed inset-0 bg-black bg-opacity-70" onclick="document.getElementById('modal').classList.add('hidden')"></div>
+    <div class="fixed inset-0 bg-black bg-opacity-70" onclick="closeModal()"></div>
     <div class="relative bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 p-8" id="modal-content">
-      <!-- Формы подгрузятся сюда через HTMX -->
+      <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">
+        <i class="fa-solid fa-times"></i>
+      </button>
     </div>
   </div>
 
   <script>
+    // Мобильное меню - правильная анимация
+    document.getElementById('mobile-menu-button')?.addEventListener('click', function() {
+        const menu = document.getElementById('mobile-menu');
+
+        if (menu.classList.contains('hidden')) {
+            // Открываем меню
+            menu.classList.remove('hidden');
+            setTimeout(() => {
+                menu.classList.remove('opacity-0');
+                menu.classList.add('opacity-100');
+            }, 10);
+        } else {
+            // Закрываем меню
+            menu.classList.remove('opacity-100');
+            menu.classList.add('opacity-0');
+            setTimeout(() => {
+                menu.classList.add('hidden');
+            }, 300);
+        }
+    });
+
+    // Закрытие модалок
+    function closeModal() {
+        document.getElementById('modal').classList.add('hidden');
+        document.getElementById('modal').classList.remove('flex');
+    }
+
+    // Обработка HTMX
     document.body.addEventListener('htmx:afterSwap', (e) => {
-      if (e.target.id === 'modal-content') {
-        document.getElementById('modal').classList.remove('hidden');
-        document.getElementById('modal').classList.add('flex');
-      }
+        if (e.target.id === 'modal-content') {
+            document.getElementById('modal').classList.remove('hidden');
+            document.getElementById('modal').classList.add('flex');
+        }
+    });
+
+    // Закрытие по ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeModal();
+        }
+    });
+
+    // Аккордеон для категорий в мобильном меню
+    document.getElementById('mobile-categories-toggle')?.addEventListener('click', function() {
+        const categories = document.getElementById('mobile-categories');
+        const icon = this.querySelector('i');
+
+        if (categories) {
+            categories.classList.toggle('hidden');
+        }
+        if (icon) {
+            icon.classList.toggle('rotate-180');
+        }
     });
   </script>
 </body>

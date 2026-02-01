@@ -1,12 +1,12 @@
-from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
-from django.views.generic import DetailView
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.views import redirect_to_login
-from django.shortcuts import get_object_or_404
-from django.http import HttpResponseForbidden
+from datetime import timedelta
 
-from .models import UserProfile, Video, Category, SeoBlock
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.utils import timezone
+from django.views.decorators.http import require_POST
+
+from .forms import VideoCommentForm
+from .models import Category, SeoBlock, Marathon, MarathonAccess, MarathonVideo, VideoComment
 
 
 def home(request):
@@ -38,39 +38,6 @@ def video_list(request):
     return render(request, 'core/video_list.html', {'videos': videos})
 
 
-# def video_detail(request, video_id):
-#     video = get_object_or_404(Video, id=video_id)
-#
-#     # Проверка аутентификации
-#     if not request.user.is_authenticated:
-#         # Используем redirect_to_login который сохраняет next параметр
-#         return redirect_to_login(
-#             request.get_full_path(),  # Важно: передаем текущий URL
-#             login_url=reverse('account_login'),
-#             redirect_field_name='next'
-#         )
-#
-#     user_profile = UserProfile.objects.get(user=request.user)
-#
-#     # Проверка доступа к премиум видео
-#     if not video.is_free and not user_profile.subscription_active:
-#         return HttpResponseForbidden("Требуется подписка для просмотра этого видео")
-#
-#     # Увеличиваем просмотры
-#     video.increment_views()
-#
-#     # Похожие видео
-#     similar_videos = Video.objects.filter(
-#         categories__in=video.categories.all()
-#     ).exclude(id=video.id).distinct()[:6]
-#
-#     return render(request, 'core/video_detail.html', {
-#         'video': video,
-#         'similar_videos': similar_videos,
-#         'user_profile': user_profile,
-#     })
-
-
 def category_detail(request, slug):
     category = get_object_or_404(Category, slug=slug)
     videos = category.videos.all()
@@ -90,61 +57,43 @@ def category_detail(request, slug):
     })
 
 
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, render, redirect
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import DetailView
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden, JsonResponse
 from .models import UserProfile, Video
 
 
 class VideoDetailView(LoginRequiredMixin, DetailView):
-    """
-    Детальная страница видео.
-    Простая версия без сложной обработки next параметра.
-    """
+    """Детальная страница обычного видео (для категорий)"""
     model = Video
     template_name = 'core/video_detail.html'
     context_object_name = 'video'
     pk_url_kwarg = 'video_id'
-
-    # Базовые настройки LoginRequiredMixin
-    login_url = '/accounts/login/'  # Редирект на страницу входа
-    redirect_field_name = 'next'  # Параметр все равно передается стандартными средствами Django
+    login_url = '/accounts/login/'
+    redirect_field_name = 'next'
 
     def dispatch(self, request, *args, **kwargs):
-        """
-        Проверяем доступ к видео.
-        """
-        # Стандартная проверка авторизации (обрабатывается LoginRequiredMixin)
         if not request.user.is_authenticated:
             return self.handle_no_permission()
 
-        # Проверяем доступ к конкретному видео
-        try:
-            video = Video.objects.get(id=kwargs.get('video_id'))
+        video = Video.objects.get(id=kwargs.get('video_id'))
 
-            # Если видео платное, проверяем подписку
-            if not video.is_free:
-                user_profile, _ = UserProfile.objects.get_or_create(user=request.user)
-                if not user_profile.subscription_active:
-                    return HttpResponseForbidden(
-                        "Для просмотра этого видео требуется активная подписка. "
-                        "Вы можете оформить подписку в своем профиле."
-                    )
+        if video.is_free:
+            return super().dispatch(request, *args, **kwargs)
 
-        except Video.DoesNotExist:
-            pass
+        user_profile, _ = UserProfile.objects.get_or_create(user=request.user)
+        if not user_profile.subscription_active:
+            return HttpResponseForbidden(
+                "Для просмотра этого видео требуется активная подписка."
+            )
 
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
-        """
-        Добавляем дополнительные данные в контекст.
-        """
         context = super().get_context_data(**kwargs)
         video = self.object
 
-        # Профиль пользователя
         user_profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
         context['user_profile'] = user_profile
 
@@ -153,93 +102,304 @@ class VideoDetailView(LoginRequiredMixin, DetailView):
             categories__in=video.categories.all()
         ).exclude(id=video.id).distinct()[:6]
 
+        # Комментарии и лайки (только для бесплатных видео)
+        if video.is_free and video.allow_comments:
+            context['comment_form'] = VideoCommentForm()
+            context['comments'] = video.comments.filter(
+                is_like=False,
+                is_approved=True
+            ).select_related('user').order_by('-created_at')[:50]
+
+            # Проверяем, лайкал ли пользователь это видео
+            if self.request.user.is_authenticated:
+                context['user_liked'] = video.comments.filter(
+                    user=self.request.user,
+                    is_like=True
+                ).exists()
+            else:
+                context['user_liked'] = False
+
         return context
 
     def render_to_response(self, context, **response_kwargs):
-        """
-        Увеличиваем счетчик просмотров после успешного рендеринга.
-        """
         response = super().render_to_response(context, **response_kwargs)
-
         if self.request.method == 'GET' and response.status_code == 200:
             self.object.increment_views()
-
         return response
 
-    def render_to_response(self, context, **response_kwargs):
-        """
-        Увеличиваем счетчик просмотров после успешного рендеринга.
-        """
-        response = super().render_to_response(context, **response_kwargs)
 
-        # Увеличиваем просмотры только для успешных GET запросов
-        if self.request.method == 'GET' and response.status_code == 200:
-            self.object.increment_views()
+@login_required
+@require_POST
+def add_video_comment(request, video_id):
+    """Добавить комментарий к видео"""
+    video = get_object_or_404(Video, id=video_id)
 
-        return response
-#
-#
-# class HomeView(TemplateView):
-#     """Главная страница"""
-#     template_name = 'core/home.html'
-#
-#     def get_context_data(self, **kwargs):
-#         context = super().get_context_data(**kwargs)
-#
-#         # Категории
-#         context['categories'] = Category.objects.all()
-#
-#         # SEO блоки
-#         context['seo_blocks'] = SeoBlock.objects.filter(
-#             is_active=True,
-#             show_on_home=True
-#         ).order_by('order')
-#
-#         # Примеры видео для неавторизованных
-#         if not self.request.user.is_authenticated:
-#             context['featured_videos'] = Video.objects.filter(
-#                 is_free=True
-#             ).order_by('-created_at')[:6]
-#
-#         return context
-#
-#
-# class CategoryDetailView(ListView):
-#     """Страница категории с видео"""
-#     model = Video
-#     template_name = 'core/category_detail.html'
-#     context_object_name = 'videos'
-#     paginate_by = 12
-#
-#     def get_queryset(self):
-#         """Возвращает видео для категории с учетом подписки"""
-#         self.category = get_object_or_404(Category, slug=self.kwargs['slug'])
-#
-#         queryset = self.category.videos.all()
-#
-#         # Фильтруем по доступности
-#         if not self.request.user.is_authenticated:
-#             queryset = queryset.filter(is_free=True)
-#         else:
-#             user_profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
-#             if not user_profile.subscription_active:
-#                 queryset = queryset.filter(is_free=True)
-#
-#         return queryset
-#
-#     def get_context_data(self, **kwargs):
-#         """Добавляем категорию в контекст"""
-#         context = super().get_context_data(**kwargs)
-#         context['category'] = self.category
-#         return context
-#
-#
-# class ProfileView(LoginRequiredMixin, TemplateView):
-#     """Страница профиля пользователя"""
-#     template_name = 'core/profile.html'
-#
-#     def get_context_data(self, **kwargs):
-#         context = super().get_context_data(**kwargs)
-#         user_profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
-#         context['user_profile'] = user_profile
-#         return context
+    # Проверяем, что видео бесплатное и разрешены комментарии
+    if not video.is_free or not video.allow_comments:
+        return HttpResponseForbidden("Комментарии запрещены для этого видео")
+
+    form = VideoCommentForm(request.POST)
+    if form.is_valid():
+        comment = form.save(commit=False)
+        comment.video = video
+        comment.user = request.user
+        comment.save()
+
+        messages.success(request, 'Комментарий добавлен!')
+    else:
+        messages.error(request, 'Ошибка при добавлении комментария')
+
+    return redirect('video_detail', video_id=video_id)
+
+
+@login_required
+@require_POST
+def toggle_video_like(request, video_id):
+    """Поставить/убрать лайк видео"""
+    video = get_object_or_404(Video, id=video_id)
+
+    # Проверяем, что видео бесплатное и разрешены лайки
+    if not video.is_free or not video.allow_likes:
+        return JsonResponse({'error': 'Лайки запрещены для этого видео'}, status=403)
+
+    # Проверяем, не лайкал ли уже
+    existing_like = VideoComment.objects.filter(
+        video=video,
+        user=request.user,
+        is_like=True
+    ).first()
+
+    if existing_like:
+        # Удаляем лайк
+        existing_like.delete()
+        liked = False
+    else:
+        # Добавляем лайк
+        VideoComment.objects.create(
+            video=video,
+            user=request.user,
+            is_like=True,
+            text=''  # Пустой текст для лайка
+        )
+        liked = True
+
+    return JsonResponse({
+        'liked': liked,
+        'likes_count': video.likes_count(),
+        'comments_count': video.comments_count()
+    })
+
+
+def marathon_video_detail(request, marathon_slug, video_id):
+    """Детальная страница видео марафона"""
+    marathon = get_object_or_404(Marathon, slug=marathon_slug, is_active=True)
+    video = get_object_or_404(MarathonVideo, id=video_id, marathon=marathon)
+
+    # Проверяем доступ к марафону
+    has_access = False
+    if request.user.is_authenticated:
+        marathon_access = MarathonAccess.objects.filter(
+            user=request.user,
+            marathon=marathon,
+            is_active=True
+        ).first()
+
+        if marathon_access and marathon_access.is_valid():
+            has_access = True
+
+    if not has_access:
+        return HttpResponseForbidden(
+            "Для просмотра этого видео требуется покупка марафона."
+        )
+
+    # Увеличиваем просмотры
+    video.increment_views()
+
+    # Похожие видео в этом марафоне
+    similar_videos = MarathonVideo.objects.filter(
+        marathon=marathon
+    ).exclude(id=video.id).order_by('order')[:6]
+
+    # Считаем общее количество видео в марафоне
+    marathon_videos_count = marathon.marathon_videos.count()
+
+    # Получаем порядковый номер текущего видео
+    video_order = video.order if video.order else MarathonVideo.objects.filter(
+        marathon=marathon,
+        id__lt=video.id
+    ).count() + 1
+
+    return render(request, 'core/marathon_video_detail.html', {
+        'marathon': marathon,
+        'video': video,
+        'similar_videos': similar_videos,
+        'has_access': has_access,
+        'marathon_videos_count': marathon_videos_count,  # ← ДОБАВИЛИ
+        'video_order': video_order,
+    })
+
+
+def marathon_list(request):
+    """
+    Список всех марафонов
+    """
+    marathons = Marathon.objects.filter(is_active=True).order_by('order')
+
+    # Получаем доступы текущего пользователя
+    user_marathon_access = {}
+    user_has_active_subscription = False
+
+    if request.user.is_authenticated:
+        # Доступы к марафонам
+        accesses = MarathonAccess.objects.filter(
+            user=request.user,
+            is_active=True
+        ).select_related('marathon')
+
+        for access in accesses:
+            if access.is_valid():
+                user_marathon_access[access.marathon_id] = True
+
+        # Активная подписка
+        try:
+            user_profile = UserProfile.objects.get(user=request.user)
+            user_has_active_subscription = user_profile.subscription_active
+        except UserProfile.DoesNotExist:
+            pass
+
+    return render(request, 'core/marathon_list.html', {
+        'marathons': marathons,
+        'user_marathon_access': user_marathon_access,
+        'user_has_active_subscription': user_has_active_subscription,
+    })
+
+
+def marathon_detail(request, slug):
+    """
+    Детальная страница марафона с разделением на тизерные и эксклюзивные видео
+    """
+    marathon = get_object_or_404(
+        Marathon.objects.prefetch_related(
+            'teaser_videos',
+            'teaser_videos__categories',
+            'marathon_videos'
+        ),
+        slug=slug,
+        is_active=True
+    )
+
+    # Проверяем доступ пользователя (ТОЛЬКО покупка марафона)
+    has_access = False
+    access_obj = None
+
+    if request.user.is_authenticated:
+        access_obj = MarathonAccess.objects.filter(
+            user=request.user,
+            marathon=marathon,
+            is_active=True
+        ).first()
+        has_access = access_obj and access_obj.is_valid()
+
+    # Тизерные видео (бесплатные для всех)
+    teaser_videos = marathon.teaser_videos.filter(is_free=True).order_by('created_at')[:6]
+
+    # Эксклюзивные видео марафона (только для купивших)
+    marathon_videos = marathon.marathon_videos.all().order_by('order')
+
+    return render(request, 'core/marathon_detail.html', {
+        'marathon': marathon,
+        'has_access': has_access,
+        'access_obj': access_obj,
+
+        # Видео
+        'teaser_videos': teaser_videos,
+        'marathon_videos': marathon_videos if has_access else [],
+
+        # Статистика
+        'teaser_videos_count': teaser_videos.count(),
+        'marathon_videos_count': marathon_videos.count(),
+        'total_videos_count': marathon_videos.count(),  # только эксклюзивные для счетчика
+
+        # Для совместимости со старым кодом
+        'free_videos': teaser_videos,
+        'paid_videos': marathon_videos if has_access else [],
+        'all_videos': marathon_videos if has_access else [],
+        'free_videos_count': teaser_videos.count(),
+        'paid_videos_count': marathon_videos.count() if has_access else 0,
+    })
+
+
+@login_required
+def marathon_purchase(request, slug):
+    """
+    Покупка марафона (упрощенная версия)
+    """
+    marathon = get_object_or_404(Marathon, slug=slug, is_active=True)
+
+    # Проверяем, не имеет ли уже доступ
+    if MarathonAccess.objects.filter(user=request.user, marathon=marathon).exists():
+        messages.info(request, f'У вас уже есть доступ к марафону "{marathon.title}"')
+        return redirect('marathon_detail', slug=slug)
+
+    # Проверяем подписку (если марафон входит в подписку)
+    try:
+        user_profile = UserProfile.objects.get(user=request.user)
+        if (user_profile.subscription_active and
+                marathon.included_in_subscription):
+            messages.info(request,
+                          f'Марафон "{marathon.title}" уже доступен по вашей подписке!')
+            return redirect('marathon_detail', slug=slug)
+    except UserProfile.DoesNotExist:
+        pass
+
+    # Здесь должна быть интеграция с платежной системой
+    # Пока просто создаем доступ
+
+    # Увеличиваем счетчик продаж
+    marathon.increment_sales()
+
+    # Создаем доступ
+    MarathonAccess.objects.create(
+        user=request.user,
+        marathon=marathon,
+        amount_paid=marathon.price,
+        is_active=True,
+        valid_until=timezone.now() + timedelta(days=365)  # 1 год доступа
+    )
+
+    messages.success(request,
+                     f'Марафон "{marathon.title}" успешно приобретен! Сумма: {marathon.price}₽')
+
+    # Отправляем на страницу марафона
+    return redirect('marathon_detail', slug=slug)
+
+
+@login_required
+def my_marathons(request):
+    """
+    Мои марафоны (в профиле)
+    """
+    # Доступы по покупке
+    marathon_accesses = MarathonAccess.objects.filter(
+        user=request.user,
+        is_active=True
+    ).select_related('marathon').order_by('-purchased_at')
+
+    # Марафоны по подписке
+    subscribed_marathons = []
+    try:
+        user_profile = UserProfile.objects.get(user=request.user)
+        if user_profile.subscription_active:
+            subscribed_marathons = Marathon.objects.filter(
+                is_active=True,
+                included_in_subscription=True
+            ).exclude(
+                id__in=[ma.marathon_id for ma in marathon_accesses]
+            )
+    except UserProfile.DoesNotExist:
+        pass
+
+    return render(request, 'core/my_marathons.html', {
+        'marathon_accesses': marathon_accesses,
+        'subscribed_marathons': subscribed_marathons,
+    })

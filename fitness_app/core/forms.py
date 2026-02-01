@@ -1,4 +1,6 @@
 from allauth.account.forms import SignupForm, LoginForm, ResetPasswordForm, ResetPasswordKeyForm
+from django import forms
+from .models import VideoComment
 
 class CustomSignupForm(SignupForm):
     def __init__(self, *args, **kwargs):
@@ -92,3 +94,30 @@ class CustomResetPasswordKeyForm(ResetPasswordKeyForm):
             'placeholder': 'Повторите новый пароль',
             'class': 'w-full px-4 py-3 bg-gray-700 rounded-lg'
         })
+
+
+class VideoCommentForm(forms.ModelForm):
+    """Форма для добавления комментария"""
+    class Meta:
+        model = VideoComment
+        fields = ['text']
+        widgets = {
+            'text': forms.Textarea(attrs={
+                'class': 'w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent',
+                'rows': 3,
+                'placeholder': 'Напишите ваш комментарий...',
+                'maxlength': 1000,
+            })
+        }
+        labels = {
+            'text': ''
+        }
+
+class VideoLikeForm(forms.ModelForm):
+    """Форма для лайка (скрытая)"""
+    class Meta:
+        model = VideoComment
+        fields = ['is_like']
+        widgets = {
+            'is_like': forms.HiddenInput()
+        }
