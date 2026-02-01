@@ -8,6 +8,32 @@
   <script src="https://unpkg.com/htmx.org@1.9.10"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <style>
+      /* Анимация появления */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Стиль для выделенного комментария */
+.highlight-comment {
+    animation: highlightPulse 2s ease-out;
+}
+
+@keyframes highlightPulse {
+    0% { background-color: rgba(147, 51, 234, 0.3); }
+    100% { background-color: transparent; }
+}
+
+/* Плавное раскрытие ответов */
+.replies-container {
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
     /* Выпадающие меню с плавной анимацией */
 .dropdown-group {
     position: relative;

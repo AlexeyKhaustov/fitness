@@ -2,14 +2,6 @@ from allauth.account.forms import SignupForm, LoginForm, ResetPasswordForm, Rese
 from django import forms
 from .models import VideoComment
 
-class CustomSignupForm(SignupForm):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # Явно делаем email обязательным
-        self.fields['email'].required = True
-        self.fields['email'].widget.attrs['placeholder'] = 'Email (обязательно)'
-        # ... остальные настройки ...
-
 
 class CustomSignupForm(SignupForm):
     def __init__(self, *args, **kwargs):
@@ -98,9 +90,11 @@ class CustomResetPasswordKeyForm(ResetPasswordKeyForm):
 
 class VideoCommentForm(forms.ModelForm):
     """Форма для добавления комментария"""
+    parent_id = forms.IntegerField(widget=forms.HiddenInput(), required=False)
+
     class Meta:
         model = VideoComment
-        fields = ['text']
+        fields = ['text', 'parent_id']  # ДОБАВЛЯЕМ parent_id
         widgets = {
             'text': forms.Textarea(attrs={
                 'class': 'w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent',

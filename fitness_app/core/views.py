@@ -1,12 +1,18 @@
 from datetime import timedelta
 
-from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.utils import timezone
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib import messages
+
+from django.views.generic import DetailView
 from django.views.decorators.http import require_POST
 
+from django.utils import timezone
+from django.shortcuts import get_object_or_404, render, redirect
+from django.http import HttpResponseForbidden, JsonResponse
+
 from .forms import VideoCommentForm
-from .models import Category, SeoBlock, Marathon, MarathonAccess, MarathonVideo, VideoComment
+from .models import Category, SeoBlock, Marathon, MarathonAccess, MarathonVideo, VideoComment, UserProfile, Video
 
 
 def home(request):
@@ -57,13 +63,6 @@ def category_detail(request, slug):
     })
 
 
-from django.shortcuts import get_object_or_404, render, redirect
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.views.generic import DetailView
-from django.http import HttpResponseForbidden, JsonResponse
-from .models import UserProfile, Video
-
-
 class VideoDetailView(LoginRequiredMixin, DetailView):
     """Детальная страница обычного видео (для категорий)"""
     model = Video
@@ -105,10 +104,13 @@ class VideoDetailView(LoginRequiredMixin, DetailView):
         # Комментарии и лайки (только для бесплатных видео)
         if video.is_free and video.allow_comments:
             context['comment_form'] = VideoCommentForm()
+
+            # Получаем только корневые комментарии (без parent)
             context['comments'] = video.comments.filter(
                 is_like=False,
-                is_approved=True
-            ).select_related('user').order_by('-created_at')[:50]
+                is_approved=True,
+                parent__isnull=True  # Только корневые
+            ).select_related('user').order_by('-created_at')[:20]
 
             # Проверяем, лайкал ли пользователь это видео
             if self.request.user.is_authenticated:
@@ -121,17 +123,11 @@ class VideoDetailView(LoginRequiredMixin, DetailView):
 
         return context
 
-    def render_to_response(self, context, **response_kwargs):
-        response = super().render_to_response(context, **response_kwargs)
-        if self.request.method == 'GET' and response.status_code == 200:
-            self.object.increment_views()
-        return response
-
 
 @login_required
 @require_POST
 def add_video_comment(request, video_id):
-    """Добавить комментарий к видео"""
+    """Добавить комментарий или ответ на комментарий"""
     video = get_object_or_404(Video, id=video_id)
 
     # Проверяем, что видео бесплатное и разрешены комментарии
@@ -143,13 +139,49 @@ def add_video_comment(request, video_id):
         comment = form.save(commit=False)
         comment.video = video
         comment.user = request.user
-        comment.save()
 
+        # Обработка ответа на комментарий
+        parent_id = form.cleaned_data.get('parent_id')
+        if parent_id:
+            try:
+                parent_comment = VideoComment.objects.get(
+                    id=parent_id,
+                    video=video,
+                    is_like=False
+                )
+
+                # ПРОВЕРКА: нельзя отвечать самому себе
+                if parent_comment.user == request.user:
+                    messages.error(request, 'Нельзя отвечать на свой собственный комментарий')
+                    return redirect('video_detail', video_id=video_id)
+
+                comment.parent = parent_comment
+            except VideoComment.DoesNotExist:
+                messages.error(request, 'Родительский комментарий не найден')
+                return redirect('video_detail', video_id=video_id)
+
+        comment.save()
         messages.success(request, 'Комментарий добавлен!')
     else:
-        messages.error(request, 'Ошибка при добавлении комментария')
+        for error in form.errors.get('text', []):
+            messages.error(request, error)
 
     return redirect('video_detail', video_id=video_id)
+
+
+def get_comment_json(request, comment_id):
+    """Получить комментарий в формате JSON"""
+    comment = get_object_or_404(VideoComment, id=comment_id, is_approved=True)
+
+    return JsonResponse({
+        'id': comment.id,
+        'username': comment.user.username,
+        'user_initial': comment.user.username[:1].upper(),
+        'text': comment.text,
+        'text_short': comment.text[:100] + ('...' if len(comment.text) > 100 else ''),
+        'created_at': comment.created_at.strftime('%d.%m.%Y %H:%M'),
+        'replies_count': comment.replies_count()
+    })
 
 
 @login_required

@@ -105,6 +105,17 @@ class VideoComment(models.Model):
     )
     text = models.TextField('Текст комментария', max_length=1000)
     is_like = models.BooleanField('Это лайк', default=False)
+
+    # ПОЛЕ ДЛЯ ОТВЕТОВ
+    parent = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='children',
+        verbose_name='Родительский комментарий'
+    )
+
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
     updated_at = models.DateTimeField('Дата обновления', auto_now=True)
 
@@ -138,6 +149,15 @@ class VideoComment(models.Model):
             self.is_edited = True
 
         super().save(*args, **kwargs)
+
+    # МЕТОД ДЛЯ ПОЛУЧЕНИЯ ОТВЕТОВ
+    def get_replies(self):
+        """Получить все ответы на комментарий"""
+        return VideoComment.objects.filter(parent=self, is_approved=True)
+
+    def replies_count(self):
+        """Количество ответов на комментарий"""
+        return VideoComment.objects.filter(parent=self, is_approved=True).count()
 
 
 class Banner(models.Model):

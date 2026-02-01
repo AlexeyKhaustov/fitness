@@ -130,10 +130,15 @@
                             <div class="text-2xl font-bold text-white">{{ video.views }}</div>
                             <div class="text-gray-400 text-sm">просмотров</div>
                         </div>
-                        <button class="p-3 bg-gray-700 hover:bg-gray-600 rounded-full transition-colors">
-                            <i class="fa-regular fa-heart text-xl"></i>
+<!--                        Лайк-->
+                        <button onclick="toggleLike({{ video.id }})"
+                                id="like-button-header"
+                                class="p-3 rounded-full transition-colors {% if user_liked %}bg-pink-600 hover:bg-pink-700{% else %}bg-gray-700 hover:bg-gray-600{% endif %}">
+                            <i class="{% if user_liked %}fa-solid{% else %}fa-regular{% endif %} fa-heart text-xl"></i>
                         </button>
-                        <button class="p-3 bg-gray-700 hover:bg-gray-600 rounded-full transition-colors">
+<!--                        Поделиться-->
+                        <button onclick="shareVideo()"
+                                class="p-3 bg-gray-700 hover:bg-gray-600 rounded-full transition-colors">
                             <i class="fa-solid fa-share text-xl"></i>
                         </button>
                     </div>
@@ -217,6 +222,139 @@
                 </div>
             {% endif %}
         </div>
+
+        <!-- Комментарии (только для бесплатных видео с разрешенными комментариями) -->
+{% if video.is_free and video.allow_comments %}
+<div class="lg:w-1/3">
+    <!-- КОММЕНТАРИИ - в правой колонке, выше всего -->
+    <div class="bg-gray-800 rounded-2xl p-6 shadow-xl sticky top-24 h-fit">
+        <!-- Заголовок -->
+        <h2 class="text-xl font-bold text-white mb-4">Комментарии</h2>
+
+        <!-- Форма комментария -->
+        {% if user.is_authenticated %}
+        <form method="post" action="{% url 'add_video_comment' video.id %}" class="mb-6">
+            {% csrf_token %}
+            <input type="hidden" name="parent_id" id="parent_id" value="">
+            <div class="mb-3">
+                <textarea name="text" id="id_text" rows="2"
+                          class="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-white text-sm"
+                          placeholder="Напишите комментарий..." maxlength="500" required></textarea>
+            </div>
+            <div class="flex justify-end">
+                <button type="submit"
+                        class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-1.5 rounded text-sm font-semibold">
+                    Отправить
+                </button>
+            </div>
+        </form>
+        {% else %}
+        <div class="bg-gray-900 rounded-lg p-3 mb-6 text-center">
+            <p class="text-gray-300 text-sm mb-2">Войдите, чтобы комментировать</p>
+            <button hx-get="/accounts/login/" hx-target="#modal-content" hx-swap="innerHTML"
+                    class="inline-block bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded text-sm">
+                Войти
+            </button>
+        </div>
+        {% endif %}
+
+        <!-- Список комментариев (компактный) -->
+        <div id="comments-list" class="max-h-[500px] overflow-y-auto pr-2">
+            {% if comments %}
+                <div class="space-y-4">
+                    {% for comment in comments %}
+                    <div class="pb-4 border-b border-gray-700 last:border-b-0" id="comment-{{ comment.id }}">
+                        <div class="flex">
+                            <!-- Аватар -->
+                            <div class="flex-shrink-0 mr-3">
+                                <div class="w-8 h-8 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full flex items-center justify-center">
+                                    <span class="text-white text-xs font-semibold">
+                                        {{ comment.user.username|slice:":1"|upper }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Контент -->
+                            <div class="flex-1">
+                                <!-- Заголовок -->
+                                <div class="mb-1">
+                                    <span class="font-semibold text-white text-sm">{{ comment.user.username }}</span>
+                                    <span class="text-gray-500 text-xs ml-2">{{ comment.created_at|timesince }} назад</span>
+                                </div>
+
+                                <!-- Текст (обрезанный) -->
+                                <p class="text-gray-300 text-sm whitespace-pre-line break-words">
+                                    {% if comment.text|length > 150 %}
+                                        {{ comment.text|slice:":150" }}...
+                                        <button onclick="showFullComment({{ comment.id }})"
+                                                class="text-purple-400 hover:text-purple-300 text-xs ml-1">
+                                            далее
+                                        </button>
+                                    {% else %}
+                                        {{ comment.text }}
+                                    {% endif %}
+                                </p>
+
+                                <!-- Кнопка ответа (если не свой комментарий) -->
+                                {% if user.is_authenticated and user != comment.user %}
+                                <button onclick="replyToComment({{ comment.id }}, '{{ comment.user.username }}')"
+                                        class="text-gray-400 hover:text-purple-400 text-xs mt-1 flex items-center">
+                                    <i class="fa-solid fa-reply mr-1"></i>
+                                    Ответить
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- Показать ответы если есть -->
+                        {% with reply_count=comment.replies_count %}
+                        {% if reply_count > 0 %}
+                        <div class="mt-2 ml-11">
+                            <button onclick="toggleCommentReplies({{ comment.id }})"
+                                    id="toggle-replies-{{ comment.id }}"
+                                    class="text-purple-400 hover:text-purple-300 text-xs flex items-center">
+                                <i class="fa-solid fa-chevron-down mr-1 text-xs" id="icon-replies-{{ comment.id }}"></i>
+                                {{ reply_count }} ответов
+                            </button>
+
+                            <!-- Ответы (скрыты) -->
+                            <div id="replies-{{ comment.id }}" class="mt-2 space-y-2 hidden">
+                                {% for reply in comment.get_replies %}
+                                <div class="flex">
+                                    <div class="flex-shrink-0 mr-2">
+                                        <div class="w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center">
+                                            <span class="text-gray-400 text-xs">
+                                                {{ reply.user.username|slice:":1"|upper }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="flex-1">
+                                        <div class="mb-1">
+                                            <span class="font-medium text-white text-xs">{{ reply.user.username }}</span>
+                                            <span class="text-gray-500 text-xs ml-1">{{ reply.created_at|timesince }} назад</span>
+                                        </div>
+                                        <p class="text-gray-300 text-xs">{{ reply.text|truncatechars:100 }}</p>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        {% endif %}
+                        {% endwith %}
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-6 text-gray-500">
+                    <i class="fa-solid fa-comment-slash text-2xl mb-2"></i>
+                    <p class="text-sm">Пока нет комментариев</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
     </div>
 </div>
 
@@ -310,8 +448,95 @@
     </div>
 </div>
 
-<!-- Базовый скрипт для видео и модалки -->
 <script>
+// Функция для ответа на комментарий
+function replyToComment(commentId, username) {
+    // Устанавливаем parent_id в форме
+    const parentField = document.getElementById('parent_id');
+    if (parentField) {
+        parentField.value = commentId;
+    }
+
+    // Меняем placeholder
+    const textarea = document.getElementById('id_text');
+    if (textarea) {
+        textarea.placeholder = `Ответ ${username}...`;
+        textarea.focus();
+        textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    // Показываем уведомление
+    showNotification(`Отвечаете ${username}`);
+}
+
+// Показать/скрыть ответы на комментарий
+function toggleCommentReplies(commentId) {
+    const repliesDiv = document.getElementById(`replies-${commentId}`);
+    const icon = document.getElementById(`icon-replies-${commentId}`);
+
+    if (repliesDiv && icon) {
+        if (repliesDiv.classList.contains('hidden')) {
+            // Показываем ответы
+            repliesDiv.classList.remove('hidden');
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-up');
+        } else {
+            // Скрываем ответы
+            repliesDiv.classList.add('hidden');
+            icon.classList.remove('fa-chevron-up');
+            icon.classList.add('fa-chevron-down');
+        }
+    }
+}
+
+// Показать полный комментарий
+function showFullComment(commentId) {
+    const commentElement = document.getElementById(`comment-${commentId}`);
+    if (commentElement) {
+        // Находим текст комментария
+        const textElement = commentElement.querySelector('p');
+        if (textElement) {
+            // Если текст уже был сокращен
+            if (textElement.innerHTML.includes('...')) {
+                // Загружаем полный текст через AJAX
+                fetch(`/comment/${commentId}/json/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        textElement.innerHTML = data.text;
+                    })
+                    .catch(error => {
+                        console.error('Error loading comment:', error);
+                    });
+            }
+        }
+    }
+}
+
+// Функция показа уведомления
+function showNotification(message) {
+    // Создаем элемент уведомления
+    const notification = document.createElement('div');
+    notification.className = 'fixed top-4 right-4 z-50 px-4 py-2 bg-purple-600 text-white rounded-lg shadow-lg text-sm animate-fade-in';
+    notification.textContent = message;
+    notification.id = 'temp-notification';
+
+    // Удаляем старое уведомление если есть
+    const oldNotification = document.getElementById('temp-notification');
+    if (oldNotification) {
+        oldNotification.remove();
+    }
+
+    document.body.appendChild(notification);
+
+    // Автоматическое удаление через 3 секунды
+    setTimeout(() => {
+        notification.classList.add('opacity-0', 'translate-y-[-20px]');
+        setTimeout(() => {
+            notification.remove();
+        }, 300);
+    }, 3000);
+}
+
 // Показ/скрытие модалки подписки
 function showSubscribeModal() {
     document.getElementById('subscribe-modal').classList.remove('hidden');
@@ -323,27 +548,201 @@ function hideSubscribeModal() {
     document.getElementById('subscribe-modal').classList.add('hidden');
 }
 
-// Симуляция подписки (позже интегрируем с платежной системой)
+// Симуляция подписки
 function subscribe(months) {
     const prices = {1: 299, 3: 717, 12: 2399};
     const price = prices[months];
 
     // Здесь будет интеграция с платежной системой
     alert(`Вы выбрали подписку на ${months} месяц(а/ев) за ${price}₽\n\nНа этом этапе произошла бы интеграция с платежной системой (ЮKassa, CloudPayments и т.д.)`);
-
-    // После успешной оплаты:
-    // fetch('/api/subscribe/', {method: 'POST', body: JSON.stringify({months: months})})
-    // .then(response => response.json())
-    // .then(data => {
-    //     if (data.success) {
-    //         location.reload();
-    //     }
-    // });
-
     hideSubscribeModal();
 }
 
+// Функция для кнопки "Поделиться"
+function shareVideo() {
+    const url = window.location.href;
+    const title = '{{ video.title }} - FitnessVideo';
+
+    if (navigator.share) {
+        // Используем Web Share API если поддерживается
+        navigator.share({
+            title: title,
+            text: 'Посмотри это видео на FitnessVideo!',
+            url: url,
+        })
+        .then(() => console.log('Успешно поделились'))
+        .catch(error => console.log('Ошибка:', error));
+    } else {
+        // Копируем в буфер обмена
+        navigator.clipboard.writeText(url)
+            .then(() => {
+                showNotification('Ссылка скопирована в буфер обмена!');
+            })
+            .catch(err => {
+                console.error('Ошибка копирования:', err);
+                // Показываем модалку с ссылкой
+                showShareModal();
+            });
+    }
+}
+
+// Функция показа модалки с ссылкой
+function showShareModal() {
+    const url = window.location.href;
+    const modalContent = document.getElementById('modal-content');
+
+    if (modalContent) {
+        modalContent.innerHTML = `
+            <div class="p-6">
+                <h3 class="text-xl font-bold text-white mb-4">Поделиться видео</h3>
+                <div class="mb-4">
+                    <label class="block text-gray-300 mb-2">Ссылка на видео:</label>
+                    <div class="flex">
+                        <input type="text" value="${url}"
+                               class="flex-1 bg-gray-700 border border-gray-600 rounded-l-lg px-3 py-2 text-white text-sm"
+                               readonly id="share-url">
+                        <button onclick="copyShareUrl()"
+                                class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-r-lg">
+                            Копировать
+                        </button>
+                    </div>
+                </div>
+                <div class="flex space-x-3 mb-4">
+                    <a href="https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent('Посмотри это видео!')}"
+                       target="_blank"
+                       class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-center py-2 rounded-lg">
+                        <i class="fab fa-telegram"></i>
+                    </a>
+                    <a href="https://vk.com/share.php?url=${encodeURIComponent(url)}"
+                       target="_blank"
+                       class="flex-1 bg-blue-700 hover:bg-blue-800 text-white text-center py-2 rounded-lg">
+                        <i class="fab fa-vk"></i>
+                    </a>
+                    <a href="https://wa.me/?text=${encodeURIComponent('Посмотри это видео: ' + url)}"
+                       target="_blank"
+                       class="flex-1 bg-green-500 hover:bg-green-600 text-white text-center py-2 rounded-lg">
+                        <i class="fab fa-whatsapp"></i>
+                    </a>
+                </div>
+                <button onclick="closeModal()"
+                        class="w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg">
+                    Закрыть
+                </button>
+            </div>
+        `;
+
+        document.getElementById('modal').classList.remove('hidden');
+        document.getElementById('modal').classList.add('flex');
+    }
+}
+
+// Функция копирования ссылки
+function copyShareUrl() {
+    const urlInput = document.getElementById('share-url');
+    if (urlInput) {
+        urlInput.select();
+        document.execCommand('copy');
+        showNotification('Ссылка скопирована!');
+    }
+}
+
+// Функция для лайка/дислайка
+function toggleLike(videoId) {
+    // Проверка аутентификации
+    const userAuthenticated = {% if user.is_authenticated %}true{% else %}false{% endif %};
+
+    if (!userAuthenticated) {
+        // Используем HTMX для загрузки формы логина
+        fetch('/accounts/login/')
+            .then(response => response.text())
+            .then(html => {
+                const modalContent = document.getElementById('modal-content');
+                if (modalContent) {
+                    modalContent.innerHTML = html;
+                    document.getElementById('modal').classList.remove('hidden');
+                    document.getElementById('modal').classList.add('flex');
+                }
+            });
+        return;
+    }
+
+    const button = document.getElementById('like-button-header');
+    const likeIcon = button.querySelector('i');
+
+    fetch(`/video/${videoId}/like/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}',
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert(data.error);
+            return;
+        }
+
+        // Обновляем кнопку в заголовке
+        if (data.liked) {
+            button.classList.remove('bg-gray-700', 'hover:bg-gray-600');
+            button.classList.add('bg-pink-600', 'hover:bg-pink-700');
+            likeIcon.classList.remove('fa-regular');
+            likeIcon.classList.add('fa-solid');
+        } else {
+            button.classList.remove('bg-pink-600', 'hover:bg-pink-700');
+            button.classList.add('bg-gray-700', 'hover:bg-gray-600');
+            likeIcon.classList.remove('fa-solid');
+            likeIcon.classList.add('fa-regular');
+        }
+
+        showNotification(data.liked ? 'Видео понравилось!' : 'Лайк убран');
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Ошибка при обработке лайка', 'error');
+    });
+}
+
+// Обновляем кнопку "Поделиться" в заголовке
 document.addEventListener('DOMContentLoaded', function() {
+    const shareButton = document.querySelector('button:has(.fa-share)');
+    if (shareButton) {
+        shareButton.addEventListener('click', shareVideo);
+    }
+
+    // Закрытие модалки подписки по ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            hideSubscribeModal();
+        }
+    });
+
+    // Клик по затемненной области закрывает модалку
+    const subscribeModal = document.getElementById('subscribe-modal');
+    if (subscribeModal) {
+        subscribeModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideSubscribeModal();
+            }
+        });
+    }
+
+    // Сброс формы комментариев при отправке
+    const commentForm = document.querySelector('form[action*="add_video_comment"]');
+    if (commentForm) {
+        commentForm.addEventListener('submit', function() {
+            setTimeout(() => {
+                this.reset();
+                const parentIdField = document.getElementById('parent_id');
+                if (parentIdField) parentIdField.value = '';
+                const textarea = document.getElementById('id_text');
+                if (textarea) textarea.placeholder = 'Напишите комментарий...';
+            }, 1000);
+        });
+    }
+
+    // Восстановление времени просмотра видео
     const video = document.getElementById('main-video');
     if (video) {
         // Сохраняем время просмотра при уходе со страницы
@@ -355,26 +754,40 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Восстанавливаем время просмотра
         const savedTime = localStorage.getItem(`video_{{ video.id }}_time`);
-        if (savedTime && video.controls) { // Только для доступных видео
+        if (savedTime && video.controls) {
             video.addEventListener('loadedmetadata', function() {
                 video.currentTime = parseFloat(savedTime);
             });
         }
     }
 
-    // Закрытие модалки по ESC
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            hideSubscribeModal();
-        }
-    });
+    // Автоматически показывать ответы если есть упоминание в URL
+    const urlHash = window.location.hash;
+    if (urlHash.startsWith('#comment-')) {
+        const commentId = urlHash.replace('#comment-', '');
+        const commentElement = document.getElementById(`comment-${commentId}`);
 
-    // Клик по затемненной области закрывает модалку
-    document.getElementById('subscribe-modal').addEventListener('click', function(e) {
-        if (e.target === this) {
-            hideSubscribeModal();
+        if (commentElement) {
+            setTimeout(() => {
+                commentElement.scrollIntoView({ behavior: 'smooth' });
+
+                // Добавляем подсветку
+                commentElement.classList.add('bg-gray-900/30', 'rounded-lg', 'p-4');
+                setTimeout(() => {
+                    commentElement.classList.remove('bg-gray-900/30', 'rounded-lg', 'p-4');
+                }, 3000);
+            }, 500);
         }
-    });
+    }
+
+    // Показываем ответы для комментариев с параметром show_replies
+    const urlParams = new URLSearchParams(window.location.search);
+    const showReplies = urlParams.get('show_replies');
+    if (showReplies) {
+        setTimeout(() => {
+            toggleCommentReplies(showReplies);
+        }, 1000);
+    }
 });
 </script>
 {% endblock %}
