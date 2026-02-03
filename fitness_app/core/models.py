@@ -168,6 +168,10 @@ class Banner(models.Model):
     image = models.ImageField('Изображение', upload_to='banners/')
     image_mobile = models.ImageField('Изображение (мобильное)', upload_to='banners/mobile/', blank=True)
 
+    # Управление отображением текста
+    show_title = models.BooleanField('Показывать заголовок', default=True)
+    show_subtitle = models.BooleanField('Показывать подзаголовок', default=True)
+
     # Стилизация
     text_color = models.CharField('Цвет текста', max_length=7, default='#FFFFFF')
     overlay_color = models.CharField('Цвет оверлея', max_length=25, default='rgba(0,0,0,0.4)')

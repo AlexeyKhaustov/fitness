@@ -66,14 +66,18 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Banner)
 class BannerAdmin(admin.ModelAdmin):
-    list_display = ('title', 'is_active', 'priority', 'text_position', 'created_at')
-    list_filter = ('is_active', 'text_position', 'show_on_mobile', 'show_on_desktop')
-    list_editable = ('is_active', 'priority')
+    list_display = ('title', 'show_title', 'show_subtitle', 'is_active', 'priority', 'text_position', 'created_at')
+    list_filter = ('is_active', 'show_title', 'show_subtitle', 'text_position', 'show_on_mobile', 'show_on_desktop')
+    list_editable = ('is_active', 'priority', 'show_title', 'show_subtitle')
     search_fields = ('title', 'subtitle')
 
     fieldsets = (
         ('Основное', {
             'fields': ('title', 'subtitle', 'button_text', 'button_link', 'image', 'image_mobile')
+        }),
+        ('Управление отображением', {
+            'fields': ('show_title', 'show_subtitle'),
+            'description': 'Управление видимостью текстовых элементов баннера'
         }),
         ('Стилизация', {
             'fields': ('text_color', 'overlay_color', 'text_position'),

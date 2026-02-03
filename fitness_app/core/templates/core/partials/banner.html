@@ -1,120 +1,499 @@
 <!-- templates/core/partials/banner.html -->
 {% load static %}
 
-{% for banner in active_banners %}
-<div class="relative overflow-hidden rounded-2xl shadow-2xl mb-8 mx-4 lg:mx-0 group"
-     data-banner-id="{{ banner.id }}"
-     style="min-height: 300px; max-height: 600px;">
+<div class="banner-slider relative overflow-hidden rounded-2xl shadow-2xl mb-8 mx-4 lg:mx-0 group"
+     style="min-height: 300px; max-height: 600px; height: 400px;">
+
+  {% for banner in active_banners %}
+  <div class="banner-slide absolute inset-0 transition-all duration-1000 ease-in-out {% if forloop.first %}opacity-100 z-10 transform translate-x-0{% else %}opacity-0 z-0 pointer-events-none transform translate-x-full{% endif %}"
+       data-index="{{ forloop.counter0 }}"
+       data-banner-id="{{ banner.id }}">
 
     <!-- Изображение -->
-    <picture>
-        <!-- Мобильная версия -->
-        <source
-            media="(max-width: 768px)"
-            srcset="{% if banner.image_mobile %}{{ banner.image_mobile.url }}{% else %}{{ banner.image.url }}{% endif %}">
-        <!-- Десктоп версия -->
-        <img
-            src="{{ banner.image.url }}"
-            alt="{{ banner.title }}"
-            class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-            loading="lazy"
-            width="1920"
-            height="600">
+    <picture class="absolute inset-0">
+      <!-- Мобильная версия -->
+      <source
+          media="(max-width: 768px)"
+          srcset="{% if banner.image_mobile %}{{ banner.image_mobile.url }}{% else %}{{ banner.image.url }}{% endif %}">
+      <!-- Десктоп версия -->
+      <img
+          src="{{ banner.image.url }}"
+          alt="{{ banner.title }}"
+          class="w-full h-full object-cover transition-transform duration-1000 ease-in-out"
+          loading="lazy"
+          width="1920"
+          height="600">
     </picture>
 
     <!-- Затемнение -->
-    <div class="absolute inset-0" style="background: {{ banner.overlay_color }};"></div>
+    <div class="absolute inset-0 transition-all duration-700" style="background: {{ banner.overlay_color }};"></div>
 
     <!-- Контент -->
-    <div class="absolute inset-0 flex items-center px-6 md:px-12 lg:px-16"
+    <div class="relative h-full flex items-center px-4 sm:px-6 md:px-8 lg:px-12 xl:px-16"
          style="justify-content:
                 {% if banner.text_position == 'left' %}flex-start
                 {% elif banner.text_position == 'right' %}flex-end
                 {% else %}center{% endif %};">
 
-        <div class="max-w-2xl text-{% if banner.text_position == 'center' %}center{% else %}left{% endif %}"
-             style="color: {{ banner.text_color }};">
+      <div class="max-w-2xl text-{% if banner.text_position == 'center' %}center{% else %}left{% endif %} transform transition-all duration-700 ease-out"
+           style="color: {{ banner.text_color }};">
 
-            <!-- Заголовок -->
-            <h2 class="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 leading-tight">
-                {{ banner.title }}
-            </h2>
+        <!-- Заголовок (только если show_title = True) -->
+        {% if banner.show_title %}
+        <h2 class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-2 md:mb-4 leading-tight transition-all duration-500">
+          {{ banner.title }}
+        </h2>
+        {% endif %}
 
-            <!-- Подзаголовок -->
-            {% if banner.subtitle %}
-            <p class="text-lg md:text-xl lg:text-2xl mb-8 opacity-90 leading-relaxed">
-                {{ banner.subtitle }}
-            </p>
-            {% endif %}
+        <!-- Подзаголовок (только если show_subtitle = True И есть текст) -->
+        {% if banner.show_subtitle and banner.subtitle %}
+        <p class="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl mb-4 md:mb-6 lg:mb-8 opacity-90 leading-relaxed transition-all duration-500 delay-100">
+          {{ banner.subtitle }}
+        </p>
+        {% endif %}
 
-            <!-- Кнопка -->
-            <a href="{{ banner.button_link }}"
-               class="inline-block bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700
-                      text-white font-bold px-8 py-4 rounded-full text-lg
-                      transition-all duration-300 transform hover:scale-105 hover:shadow-2xl
-                      shadow-lg">
-                {{ banner.button_text }} <i class="fa-solid fa-arrow-right ml-2"></i>
-            </a>
-        </div>
+        <!-- Кнопка -->
+        {% if banner.button_text %}
+        <a href="{{ banner.button_link }}"
+           class="inline-flex items-center justify-center bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700
+                  text-white font-bold rounded-full
+                  transition-all duration-300 transform hover:scale-105 hover:shadow-2xl active:scale-95
+                  shadow-lg
+                  px-4 py-2 text-sm
+                  sm:px-5 sm:py-2.5 sm:text-base
+                  md:px-6 md:py-3 md:text-lg
+                  lg:px-8 lg:py-4 lg:text-xl
+                  whitespace-normal sm:whitespace-nowrap
+                  max-w-full
+                  text-center">
+          <span class="mx-1">{{ banner.button_text }}</span>
+          <i class="fa-solid fa-arrow-right ml-2 flex-shrink-0"></i>
+        </a>
+        {% endif %}
+      </div>
     </div>
+  </div>
+  {% endfor %}
 
-    <!-- Индикатор (если несколько баннеров) -->
-    {% if active_banners|length > 1 %}
-    <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
-        {% for b in active_banners %}
-        <button class="w-3 h-3 rounded-full {% if b.id == banner.id %}bg-white{% else %}bg-white/50{% endif %}"
-                onclick="showBanner({{ forloop.counter0 }})"
-                aria-label="Показать баннер {{ forloop.counter }}">
-        </button>
-        {% endfor %}
-    </div>
-    {% endif %}
+  <!-- Индикаторы -->
+  {% if active_banners|length > 1 %}
+  <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-20">
+    {% for banner in active_banners %}
+    <button class="banner-indicator w-3 h-3 rounded-full transition-all duration-300
+                   {% if forloop.first %}bg-white scale-125 shadow-md{% else %}bg-white/50 hover:bg-white/70{% endif %}"
+            data-index="{{ forloop.counter0 }}"
+            aria-label="Показать баннер {{ forloop.counter }}">
+    </button>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- Кнопки навигации -->
+  {% if active_banners|length > 1 %}
+  <button class="banner-prev absolute left-2 sm:left-4 top-1/2 transform -translate-y-1/2
+                 bg-black/30 hover:bg-black/50 active:bg-black/60 text-white
+                 p-2 sm:p-3 rounded-full
+                 transition-all duration-300 opacity-0 group-hover:opacity-100 hidden sm:block z-20
+                 active:scale-95"
+          aria-label="Предыдущий баннер">
+    <i class="fa-solid fa-chevron-left text-lg sm:text-xl"></i>
+  </button>
+
+  <button class="banner-next absolute right-2 sm:right-4 top-1/2 transform -translate-y-1/2
+                 bg-black/30 hover:bg-black/50 active:bg-black/60 text-white
+                 p-2 sm:p-3 rounded-full
+                 transition-all duration-300 opacity-0 group-hover:opacity-100 hidden sm:block z-20
+                 active:scale-95"
+          aria-label="Следующий баннер">
+    <i class="fa-solid fa-chevron-right text-lg sm:text-xl"></i>
+  </button>
+  {% endif %}
 </div>
-{% endfor %}
 
-<!-- Скрипт для переключения баннеров -->
+<!-- Скрипты (без console.log) -->
 <script>
-let currentBanner = 0;
-const banners = document.querySelectorAll('[data-banner-id]');
-const intervalTime = 5000; // 5 секунд
+(function() {
+    'use strict';
 
-function showBanner(index) {
-    banners.forEach((banner, i) => {
-        banner.classList.toggle('hidden', i !== index);
-        banner.classList.toggle('block', i === index);
-    });
-    currentBanner = index;
-}
+    // Конфигурация
+    const CONFIG = {
+        intervalTime: 5000,
+        swipeThreshold: 50,
+        transitionDuration: 1000
+    };
 
-// Автопереключение
-if (banners.length > 1) {
-    setInterval(() => {
-        currentBanner = (currentBanner + 1) % banners.length;
+    // Состояние
+    let currentBanner = 0;
+    let bannerSlides = [];
+    let bannerIndicators = [];
+    let autoPlayInterval = null;
+    let sliderElement = null;
+    let isAnimating = false;
+
+    // Для свайпа
+    let touchStartX = 0;
+    let touchEndX = 0;
+    let isSwiping = false;
+
+    // Получение DOM элементов
+    function getElements() {
+        sliderElement = document.querySelector('.banner-slider');
+        bannerSlides = Array.from(document.querySelectorAll('.banner-slide'));
+        bannerIndicators = Array.from(document.querySelectorAll('.banner-indicator'));
+    }
+
+    // Плавное переключение баннеров
+    function showBanner(index) {
+        if (isAnimating || index < 0 || index >= bannerSlides.length) return;
+
+        isAnimating = true;
+        const prevIndex = currentBanner;
+        currentBanner = index;
+
+        // Определяем направление анимации
+        const direction = index > prevIndex ? 'translate-x-full' : '-translate-x-full';
+        const reverseDirection = index > prevIndex ? '-translate-x-full' : 'translate-x-full';
+
+        // Анимация ухода текущего баннера
+        if (bannerSlides[prevIndex]) {
+            bannerSlides[prevIndex].classList.remove('translate-x-0');
+            bannerSlides[prevIndex].classList.add('opacity-0', 'pointer-events-none', 'z-0', direction);
+            bannerSlides[prevIndex].classList.remove('opacity-100', 'z-10');
+        }
+
+        // Подготовка нового баннера
+        if (bannerSlides[index]) {
+            bannerSlides[index].classList.remove('translate-x-0', 'opacity-0', 'pointer-events-none', 'z-0');
+            bannerSlides[index].classList.add(reverseDirection, 'opacity-100', 'z-10');
+
+            // Запускаем анимацию появления
+            requestAnimationFrame(() => {
+                bannerSlides[index].classList.remove(direction, reverseDirection);
+                bannerSlides[index].classList.add('translate-x-0');
+            });
+        }
+
+        // Обновление индикаторов
+        updateIndicators(prevIndex, index);
+
+        // Сброс автоплея
+        resetAutoPlay();
+
+        // Разблокировка анимации
+        setTimeout(() => {
+            isAnimating = false;
+        }, CONFIG.transitionDuration);
+    }
+
+    // Обновление индикаторов
+    function updateIndicators(prevIndex, currentIndex) {
+        // Убираем выделение с предыдущего
+        if (prevIndex >= 0 && bannerIndicators[prevIndex]) {
+            bannerIndicators[prevIndex].classList.remove('bg-white', 'scale-125', 'shadow-md');
+            bannerIndicators[prevIndex].classList.add('bg-white/50');
+        }
+
+        // Добавляем выделение текущему
+        if (currentIndex >= 0 && bannerIndicators[currentIndex]) {
+            bannerIndicators[currentIndex].classList.remove('bg-white/50');
+            bannerIndicators[currentIndex].classList.add('bg-white', 'scale-125', 'shadow-md');
+        }
+    }
+
+    // Следующий баннер
+    function nextBanner() {
+        if (isAnimating || bannerSlides.length <= 1) return;
+        const nextIndex = (currentBanner + 1) % bannerSlides.length;
+        showBanner(nextIndex);
+    }
+
+    // Предыдущий баннер
+    function prevBanner() {
+        if (isAnimating || bannerSlides.length <= 1) return;
+        const prevIndex = (currentBanner - 1 + bannerSlides.length) % bannerSlides.length;
+        showBanner(prevIndex);
+    }
+
+    // Автоплей
+    function startAutoPlay() {
+        if (bannerSlides.length > 1 && !autoPlayInterval) {
+            autoPlayInterval = setInterval(nextBanner, CONFIG.intervalTime);
+        }
+    }
+
+    function stopAutoPlay() {
+        if (autoPlayInterval) {
+            clearInterval(autoPlayInterval);
+            autoPlayInterval = null;
+        }
+    }
+
+    function resetAutoPlay() {
+        stopAutoPlay();
+        setTimeout(startAutoPlay, 3000);
+    }
+
+    // Обработка свайпов
+    function handleTouchStart(e) {
+        if (bannerSlides.length <= 1) return;
+
+        touchStartX = e.touches[0].clientX;
+        isSwiping = true;
+        stopAutoPlay();
+    }
+
+    function handleTouchMove(e) {
+        if (!isSwiping) return;
+
+        touchEndX = e.touches[0].clientX;
+        const diff = touchStartX - touchEndX;
+
+        // Предварительное перемещение текущего слайда
+        if (Math.abs(diff) > 10 && bannerSlides[currentBanner]) {
+            const translateX = Math.max(-100, Math.min(100, diff / 10));
+            bannerSlides[currentBanner].style.transform = `translateX(${translateX}%)`;
+        }
+    }
+
+    function handleTouchEnd(e) {
+        if (!isSwiping) return;
+
+        isSwiping = false;
+        touchEndX = e.changedTouches[0].clientX;
+        const diff = touchStartX - touchEndX;
+
+        // Сбрасываем transform
+        if (bannerSlides[currentBanner]) {
+            bannerSlides[currentBanner].style.transform = '';
+        }
+
+        // Определяем свайп
+        if (Math.abs(diff) > CONFIG.swipeThreshold) {
+            if (diff > 0) {
+                nextBanner();
+            } else {
+                prevBanner();
+            }
+        }
+
+        // Запускаем автоплей с задержкой
+        setTimeout(startAutoPlay, 3000);
+    }
+
+    // Инициализация
+    function initBannerSlider() {
+        getElements();
+
+        if (bannerSlides.length === 0) return;
+
+        // Очистка старых обработчиков
+        if (sliderElement) {
+            sliderElement.removeEventListener('touchstart', handleTouchStart);
+            sliderElement.removeEventListener('touchmove', handleTouchMove);
+            sliderElement.removeEventListener('touchend', handleTouchEnd);
+            sliderElement.removeEventListener('mouseenter', stopAutoPlay);
+            sliderElement.removeEventListener('mouseleave', startAutoPlay);
+        }
+
+        // Добавляем обработчики если больше одного баннера
+        if (bannerSlides.length > 1) {
+            if (sliderElement) {
+                // Свайп для мобильных
+                sliderElement.addEventListener('touchstart', handleTouchStart, { passive: true });
+                sliderElement.addEventListener('touchmove', handleTouchMove, { passive: true });
+                sliderElement.addEventListener('touchend', handleTouchEnd, { passive: true });
+
+                // Пауза при наведении (для десктопа)
+                sliderElement.addEventListener('mouseenter', stopAutoPlay);
+                sliderElement.addEventListener('mouseleave', () => setTimeout(startAutoPlay, 1000));
+
+                // Кнопки навигации
+                const prevBtn = sliderElement.querySelector('.banner-prev');
+                const nextBtn = sliderElement.querySelector('.banner-next');
+
+                if (prevBtn) prevBtn.onclick = prevBanner;
+                if (nextBtn) nextBtn.onclick = nextBanner;
+            }
+
+            // Индикаторы
+            bannerIndicators.forEach((indicator, index) => {
+                indicator.onclick = () => showBanner(index);
+            });
+
+            // Запускаем автоплей
+            startAutoPlay();
+        }
+
+        // Убедимся что правильный баннер активен
         showBanner(currentBanner);
-    }, intervalTime);
+    }
 
-    // Показываем только первый баннер изначально
-    showBanner(0);
-}
+    // События
+    document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(initBannerSlider, 100);
+    });
+
+    // Для HTMX
+    document.addEventListener('htmx:afterSwap', () => {
+        setTimeout(initBannerSlider, 300);
+    });
+
+    document.addEventListener('htmx:beforeSwap', stopAutoPlay);
+
+})();
 </script>
 
 <style>
-/* Плавные переходы */
-[data-banner-id] {
-    transition: opacity 0.8s ease-in-out;
+/* Базовые стили */
+.banner-slider {
+    touch-action: pan-y pinch-zoom;
+    user-select: none;
+    position: relative;
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
 }
 
-/* Адаптивность */
-@media (max-width: 768px) {
-    [data-banner-id] {
+.banner-slide {
+    transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity 1s cubic-bezier(0.4, 0, 0.2, 1);
+    will-change: transform, opacity;
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+}
+
+/* Плавные трансформации */
+.banner-slide.translate-x-0 {
+    transform: translateX(0) !important;
+}
+
+.banner-slide.translate-x-full {
+    transform: translateX(100%) !important;
+}
+
+.banner-slide.-translate-x-full {
+    transform: translateX(-100%) !important;
+}
+
+/* Индикаторы */
+.banner-indicator {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    transform-origin: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.banner-indicator:hover {
+    transform: scale(1.3);
+    background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.banner-indicator.bg-white {
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5), 0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* Навигационные кнопки */
+.banner-prev, .banner-next {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: center;
+    backdrop-filter: blur(4px);
+    cursor: pointer;
+}
+
+.banner-slider:hover .banner-prev,
+.banner-slider:hover .banner-next {
+    opacity: 1 !important;
+}
+
+/* Адаптивность кнопки */
+.banner-slide a {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    white-space: normal !important;
+    max-width: 100% !important;
+    width: auto !important;
+}
+
+/* На десктопе - текст в одну строку */
+@media (min-width: 640px) {
+    .banner-slide a {
+        white-space: nowrap !important;
+    }
+}
+
+/* Медиа-запросы для адаптивности */
+@media (max-width: 640px) {
+    .banner-slider {
         min-height: 250px !important;
+        max-height: 400px !important;
+        height: 300px !important;
         border-radius: 1rem !important;
+        margin: 0 0.5rem 1rem !important;
     }
-    [data-banner-id] h2 {
-        font-size: 2rem !important;
+
+    .banner-slider .banner-slide h2 {
+        font-size: 1.25rem !important;
+        margin-bottom: 0.25rem !important;
+        line-height: 1.1 !important;
+        padding: 0 0.5rem;
     }
-    [data-banner-id] p {
-        font-size: 1rem !important;
+
+    .banner-slider .banner-slide p {
+        font-size: 0.75rem !important;
+        margin-bottom: 0.75rem !important;
+        line-height: 1.2 !important;
+        padding: 0 0.5rem;
+        -webkit-line-clamp: 2;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .banner-slider .banner-slide a {
+        font-size: 0.75rem !important;
+        padding: 0.5rem 1rem !important;
+        margin: 0 auto !important;
+        white-space: normal !important;
+        text-align: center !important;
+        line-height: 1.2 !important;
+    }
+
+    .banner-indicator {
+        width: 8px !important;
+        height: 8px !important;
+    }
+}
+
+/* Улучшения для свайпа */
+.banner-slider.swiping {
+    cursor: grabbing !important;
+}
+
+.banner-slider.swiping .banner-slide {
+    transition-duration: 0.1s !important;
+}
+
+/* Эффекты при наведении */
+.banner-slide img {
+    transition: transform 8s cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+.banner-slider:hover .banner-slide img {
+    transform: scale(1.05);
+}
+
+/* Для мобильных - отключаем некоторые эффекты */
+@media (hover: none) and (pointer: coarse) {
+    .banner-slider .banner-prev,
+    .banner-slider .banner-next {
+        display: none !important;
+    }
+
+    .banner-slider:hover .banner-slide img {
+        transform: none;
     }
 }
 </style>
