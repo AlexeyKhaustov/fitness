@@ -18,15 +18,8 @@ from .models import Category, SeoBlock, Marathon, MarathonAccess, MarathonVideo,
 def home(request):
     categories = Category.objects.all()
 
-    # Получаем активные SEO-блоки для главной
-    seo_blocks = SeoBlock.objects.filter(
-        is_active=True,
-        show_on_home=True
-    ).order_by('order')
-
     return render(request, 'core/home.html', {
         'categories': categories,
-        'seo_blocks': seo_blocks,  # Добавляем в контекст
     })
 
 @login_required

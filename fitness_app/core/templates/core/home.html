@@ -17,42 +17,38 @@
   <!-- Заголовок -->
   <div class="text-center mb-12">
     <h1 class="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">
-      Выбери свою тренировку
+       Какой заголовок H1?
     </h1>
-    <p class="text-gray-400 text-lg">Тысячи видео профессиональных тренировок</p>
   </div>
 
-  <!-- Категории -->
-  <div id="categories" class="mb-16">
+<div id="categories" class="mb-16">
     <h2 class="text-2xl font-bold text-white mb-8 text-center">Категории тренировок</h2>
 
     <div class="categories-grid">
-      {% for cat in categories %}
-      <a href="{% url 'category_detail' cat.slug %}"
-         class="group relative overflow-hidden rounded-2xl shadow-2xl transform transition-all duration-300 hover:scale-105">
-        <div class="{{ cat.color }} p-8 h-48 flex flex-col items-center justify-center text-white">
-          <!-- Проверяем, есть ли картинка -->
-          {% if cat.image %}
-            <!-- Отображаем картинку -->
-            <img src="{{ cat.image.url }}"
-                 alt="{{ cat.name }}"
-                 class="h-16 w-16 object-contain mb-4 group-hover:animate-pulse">
-          {% else %}
-            <!-- Отображаем иконку Font Awesome -->
-            <i class="fa-solid fa-{{ cat.icon|default:'film' }} text-5xl mb-4 group-hover:animate-pulse"></i>
-          {% endif %}
-          <h3 class="text-xl font-bold text-center">{{ cat.name }}</h3>
-          <p class="text-sm opacity-80 mt-2">{{ cat.videos.count }} видео</p>
+        {% for cat in categories %}
+        <a href="{% url 'category_detail' cat.slug %}"
+           class="category-card group relative overflow-hidden rounded-2xl shadow-2xl transform transition-all duration-300 hover:scale-105">
+            <div class="{{ cat.color }} p-8 h-full flex flex-col items-center justify-center text-white">
+                {% if cat.image %}
+                    <img src="{{ cat.image.url }}"
+                         alt="{{ cat.name }}"
+                         class="h-16 w-16 object-contain mb-4 group-hover:animate-pulse">
+                {% else %}
+                    <i class="fa-solid fa-{{ cat.icon|default:'film' }} text-5xl mb-4 group-hover:animate-pulse"></i>
+                {% endif %}
+                <h3 class="text-xl font-bold text-center">{{ cat.name }}</h3>
+                <p class="text-sm opacity-80 mt-2">{{ cat.videos.count }} видео</p>
+            </div>
+            <div class="absolute inset-0 bg-black opacity-0 group-hover:opacity-30 transition-opacity"></div>
+        </a>
+        {% empty %}
+        <div class="col-span-full text-center py-12 text-gray-500">
+            <i class="fa-solid fa-film text-5xl mb-4"></i>
+            <p>Категории пока не добавлены</p>
         </div>
-        <div class="absolute inset-0 bg-black opacity-0 group-hover:opacity-30 transition-opacity"></div>
-      </a>
-      {% empty %}
-      <div class="col-span-full text-center py-12 text-gray-500">
-        <i class="fa-solid fa-film text-5xl mb-4"></i>
-        <p>Категории пока не добавлены</p>
-      </div>
-      {% endfor %}
+        {% endfor %}
     </div>
+</div>
 
   <!-- SEO блоки -->
   {% if seo_blocks %}
