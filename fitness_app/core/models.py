@@ -18,7 +18,14 @@ class Category(models.Model):
     name = models.CharField('Название', max_length=100)
     slug = models.SlugField('URL', max_length=100, unique=True)
     icon = models.CharField('Иконка (Font Awesome)', max_length=50, default='film',
-                            help_text='Например: dumbbell, running, heart-pulse, yoga, fire')
+                            help_text='Например: dumbbell, running, heart-pulse, yoga, fire. Будет использоваться, если не загружена картинка')
+    image = models.ImageField(
+        'Картинка категории',
+        upload_to='category_images/%Y/%m/',
+        blank=True,
+        null=True,
+        help_text='Рекомендуемый размер: 200×200px. Если загружена картинка, она будет отображаться вместо иконки'
+    )
     color = models.CharField('Цвет (Tailwind)', max_length=300, default='bg-gradient-to-br from-purple-600 to-pink-600')
 
     class Meta:
@@ -31,6 +38,30 @@ class Category(models.Model):
 
     def get_absolute_url(self):
         return reverse('category_detail', args=[self.slug])
+
+    @property
+    def has_image(self):
+        """Проверяет, есть ли у категории загруженная картинка"""
+        return bool(self.image and self.image.url)
+
+    def get_display_content(self):
+        """
+        Возвращает то, что нужно отобразить:
+        - Картинку, если она есть
+        - Иконку Font Awesome, если картинки нет
+        """
+        if self.has_image:
+            return {
+                'type': 'image',
+                'content': self.image.url,
+                'alt': self.name
+            }
+        else:
+            return {
+                'type': 'icon',
+                'content': self.icon,
+                'alt': self.name
+            }
 
 
 class Video(models.Model):

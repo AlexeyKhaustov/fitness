@@ -181,12 +181,20 @@
                                 opacity-0 invisible group-hover:opacity-100 group-hover:visible
                                 transition-all duration-300 transform -translate-y-3 group-hover:translate-y-0">
                         {% for category in categories|slice:":8" %}
-                        <a href="{{ category.get_absolute_url }}"
-                           class="block px-4 py-3 hover:bg-purple-600 hover:text-white transition flex items-center group/item">
-                            <i class="fa-solid fa-{{ category.icon|default:'film' }} mr-3 text-{{ category.color|slice:'17:22'|default:'purple' }}-400
-                                     group-hover/item:scale-110 transition-transform"></i>
-                            {{ category.name }}
-                        </a>
+                            <a href="{{ category.get_absolute_url }}"
+                               class="block px-4 py-3 hover:bg-purple-600 hover:text-white transition flex items-center group/item">
+                              {% if category.image %}
+                                <!-- Картинка категории -->
+                                <img src="{{ category.image.url }}"
+                                     alt="{{ category.name }}"
+                                     class="h-5 w-5 mr-3 object-contain group-hover/item:scale-110 transition-transform">
+                              {% else %}
+                                <!-- Иконка Font Awesome -->
+                                <i class="fa-solid fa-{{ category.icon|default:'film' }} mr-3 text-{{ category.color|slice:'17:22'|default:'purple' }}-400
+                                         group-hover/item:scale-110 transition-transform"></i>
+                              {% endif %}
+                              {{ category.name }}
+                            </a>
                         {% endfor %}
 
                         {% if categories.count > 8 %}

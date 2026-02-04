@@ -130,6 +130,11 @@ USE_TZ = True
 # Статические и медиафайлы
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',  # Ваши кастомные файлы
+]
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
@@ -176,3 +181,11 @@ else:
 
 # Отладка CSRF кук (для разработки)
 CSRF_COOKIE_HTTPONLY = False
+
+
+class CustomAdminConfig:
+    CSS_URLS = [
+        'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css',
+        '/static/admin/css/category_admin.css',
+        '/static/admin/css/base_overrides.css',
+    ]
