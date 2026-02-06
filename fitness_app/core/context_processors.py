@@ -17,7 +17,7 @@ def active_banners(request):
         # Сортируем по приоритету
         banners.sort(key=lambda x: x.priority, reverse=True)
 
-        return {'active_banners': banners[:3]}  # Максимум 3 баннера
+        return {'active_banners': banners}  # Можно сделать ограничение по кол-ву. Например: banners[:3]
     except Exception as e:
         # Если база данных еще не готова или произошла ошибка
         # (например, при первом запуске до миграций)

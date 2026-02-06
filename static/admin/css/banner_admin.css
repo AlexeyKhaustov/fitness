@@ -1,0 +1,190 @@
+/* banner_admin.css - ФИНАЛЬНАЯ ВЕРСИЯ */
+
+/* Общие стили для подсказок */
+.help-tip {
+    margin: 15px 0;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 5px solid;
+    font-size: 14px;
+    line-height: 1.5;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.help-tip.info {
+    background: #eff6ff;
+    border-left-color: #3b82f6;
+}
+
+.help-tip.success {
+    background: #f0fdf4;
+    border-left-color: #10b981;
+}
+
+.help-tip.warning {
+    background: #fffbeb;
+    border-left-color: #f59e0b;
+}
+
+.help-tip.danger {
+    background: #fef2f2;
+    border-left-color: #ef4444;
+}
+
+/* Стили для превью */
+.field-preview_desktop img,
+.field-preview_mobile img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin: 10px 0;
+}
+
+/* Цветовые индикаторы в списке */
+.column-is_clickable .fa-check-circle {
+    color: #10b981;
+}
+
+.column-is_clickable .fa-times-circle {
+    color: #ef4444;
+}
+
+.column-show_button .fa-eye {
+    color: #3b82f6;
+}
+
+.column-show_button .fa-eye-slash {
+    color: #6b7280;
+}
+
+/* Стили для полей с цветом */
+.field-text_color input,
+.field-overlay_color input {
+    width: 100px !important;
+    font-family: monospace;
+}
+
+/* Иконки в заголовках полей */
+.fieldBox h2 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 18px !important;
+}
+
+.fieldBox h2 label::before {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    margin-right: 8px;
+}
+
+.field-text_color h2 label::before {
+    content: "🎨";
+}
+
+.field-is_clickable h2 label::before {
+    content: "🔗";
+}
+
+.field-show_button h2 label::before {
+    content: "🔼";
+}
+
+/* Кликабельные блоки выбора типа */
+.help-tip.danger div[onclick] {
+    transition: all 0.3s ease;
+    cursor: pointer !important;
+}
+
+.help-tip.danger div[onclick]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.help-tip.danger div[onclick]:active {
+    transform: translateY(0);
+}
+
+/* Поля формы */
+.field-is_clickable,
+.field-show_button,
+.field-button_on_hover {
+    background: #f8fafc;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 10px 0;
+    border: 1px solid #e2e8f0;
+}
+
+/* Превью изображений */
+.field-preview_desktop,
+.field-preview_mobile {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    border: 1px solid #e5e7eb;
+}
+
+/* Выделение активного типа */
+.banner-type-active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    color: white !important;
+    border-color: #5a67d8 !important;
+}
+
+/* Улучшения для полей ввода */
+.field-priority input {
+    width: 80px !important;
+}
+
+/* Анимация при наведении на превью */
+.field-preview_desktop img:hover,
+.field-preview_mobile img:hover {
+    transform: scale(1.02);
+    transition: transform 0.3s ease;
+}
+
+/* Стили для группы чекбоксов */
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 15px 0;
+}
+
+.checkbox-group .form-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    background: #f9fafb;
+    border-radius: 6px;
+}
+
+/* =================== АДАПТИВНОСТЬ =================== */
+@media (max-width: 768px) {
+    /* Варианты отображения в одну колонку */
+    .help-tip.danger .variants-grid,
+    .help-tip.danger .banner-type-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Увеличение отступов */
+    .fieldBox {
+        margin-bottom: 20px !important;
+    }
+
+    /* Уменьшение ширины полей ввода цвета */
+    .field-text_color input,
+    .field-overlay_color input {
+        width: 80px !important;
+    }
+
+    /* Меньшие отступы для подсказок */
+    .help-tip {
+        padding: 12px;
+        font-size: 13px;
+    }
+}

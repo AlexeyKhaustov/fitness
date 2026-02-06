@@ -279,39 +279,291 @@ class CategoryAdmin(admin.ModelAdmin):
     restore_icons.short_description = "🔄 Восстановить иконки"
 
 
-
 @admin.register(Banner)
 class BannerAdmin(admin.ModelAdmin):
-    list_display = ('title', 'show_title', 'show_subtitle', 'is_active', 'priority', 'text_position', 'created_at')
-    list_filter = ('is_active', 'show_title', 'show_subtitle', 'text_position', 'show_on_mobile', 'show_on_desktop')
-    list_editable = ('is_active', 'priority', 'show_title', 'show_subtitle')
-    search_fields = ('title', 'subtitle')
+    list_display = ('title', 'is_active', 'display_type', 'priority', 'text_position', 'created_at')
+    list_filter = ('is_active', 'is_clickable', 'show_button', 'button_on_hover', 'text_position')
+    list_editable = ('is_active', 'priority')
+    search_fields = ('title', 'subtitle', 'button_text')
+    readonly_fields = ('preview_desktop', 'preview_mobile', 'created_at', 'updated_at', 'display_type_info')
+
+    # Новое поле для отображения типа
+    def display_type(self, obj):
+        if not obj.is_clickable and not obj.show_button:
+            return "📷 Статичный"
+        elif obj.is_clickable and not obj.show_button:
+            return "🔗 Кликабельный"
+        elif obj.is_clickable and obj.show_button and not obj.button_on_hover:
+            return "🔼 Кнопка всегда"
+        elif obj.is_clickable and obj.show_button and obj.button_on_hover:
+            return "✨ Кнопка при наведении"
+        return "—"
+
+    display_type.short_description = "Тип баннера"
+
+    # Новое поле для отображения типа в админке
+    def display_type_info(self, obj):
+        return format_html('''
+            <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 5px solid #10b981; margin: 10px 0;">
+                <strong style="color: #065f46;">📋 Текущий тип баннера:</strong><br>
+                <span style="font-size: 16px; font-weight: bold;">{}</span>
+            </div>
+        ''', self.display_type(obj))
+
+    display_type_info.short_description = ""
+
+    # Превью десктоп
+    def preview_desktop(self, obj):
+        if obj.image:
+            return format_html(
+                '<div style="border: 2px solid #ddd; border-radius: 8px; padding: 10px; margin: 10px 0; background: #f5f5f5;">'
+                '<strong>📺 Десктоп версия:</strong><br>'
+                '<img src="{}" style="max-width: 100%; height: auto; border-radius: 5px; margin-top: 10px; border: 1px solid #ccc;" />'
+                '</div>',
+                obj.image.url
+            )
+        return "—"
+
+    preview_desktop.short_description = "Превью (десктоп)"
+
+    # Превью мобильное
+    def preview_mobile(self, obj):
+        if obj.image_mobile:
+            return format_html(
+                '<div style="border: 2px solid #ddd; border-radius: 8px; padding: 10px; margin: 10px 0; background: #f5f5f5; max-width: 300px;">'
+                '<strong>📱 Мобильная версия:</strong><br>'
+                '<img src="{}" style="width: 100%; height: auto; border-radius: 5px; margin-top: 10px; border: 1px solid #ccc;" />'
+                '</div>',
+                obj.image_mobile.url
+            )
+        elif obj.image:
+            return format_html(
+                '<div style="border: 2px solid #ddd; border-radius: 8px; padding: 10px; margin: 10px 0; background: #f5f5f5; max-width: 300px;">'
+                '<strong>📱 Будет использоваться десктопное:</strong><br>'
+                '<img src="{}" style="width: 100%; height: auto; border-radius: 5px; margin-top: 10px; border: 1px solid #ccc;" />'
+                '</div>',
+                obj.image.url
+            )
+        return "—"
+
+    preview_mobile.short_description = "Превью (мобильный)"
 
     fieldsets = (
-        ('Основное', {
-            'fields': ('title', 'subtitle', 'button_text', 'button_link', 'image', 'image_mobile')
+        ('📝 Основное содержание', {
+            'fields': ('title', 'subtitle'),
+            'description': '''
+                <div class="help-tip info" style="margin: 10px 0; padding: 15px; background: #eff6ff; border-radius: 8px; border-left: 5px solid #3b82f6;">
+                <strong style="color: #1e40af;">Текстовое содержание баннера</strong><br>
+                • Заголовок - основной текст баннера<br>
+                • Подзаголовок - дополнительная информация
+                </div>
+            '''
         }),
-        ('Управление отображением', {
+
+        ('🖼️ Изображения баннера', {
+            'fields': ('image', 'image_mobile'),
+            'description': '''
+                <div class="help-tip info" style="margin: 10px 0; padding: 15px; background: #eff6ff; border-radius: 8px; border-left: 5px solid #3b82f6;">
+                <strong style="color: #1e40af;">Рекомендации по изображениям:</strong><br>
+                • <strong>Десктоп:</strong> 1920×600px (рекомендуется)<br>
+                • <strong>Мобильные:</strong> 800×650px (если не указано, используется десктопное)<br>
+                • <strong>Формат:</strong> JPG или PNG<br>
+                • <strong>Вес:</strong> ≤ 500KB для быстрой загрузки
+                </div>
+            '''
+        }),
+
+        ('👁️ Видимость элементов', {
             'fields': ('show_title', 'show_subtitle'),
-            'description': 'Управление видимостью текстовых элементов баннера'
+            'description': '''
+                <div class="help-tip warning" style="margin: 10px 0; padding: 15px; background: #fffbeb; border-radius: 8px; border-left: 5px solid #f59e0b;">
+                <strong style="color: #92400e;">Управление видимостью текста</strong><br>
+                • Можно скрыть заголовок<br>
+                • Можно скрыть подзаголовок<br>
+                • Полезно для чисто визуальных баннеров
+                </div>
+            '''
         }),
-        ('Стилизация', {
+
+        ('🔗 Кнопка и ссылки', {
+            'fields': ('button_text', 'button_link', 'click_link'),
+            'description': '''
+                <div class="help-tip success" style="margin: 10px 0; padding: 15px; background: #f0fdf4; border-radius: 8px; border-left: 5px solid #10b981;">
+                <strong style="color: #065f46;">Настройки ссылок и кнопки</strong><br>
+                • <strong>Текст кнопки</strong>: Оставьте пустым, если кнопка не нужна<br>
+                • <strong>Ссылка кнопки</strong>: Куда ведет кнопка<br>
+                • <strong>Ссылка баннера</strong>: Куда ведет клик по всему баннеру
+                </div>
+            '''
+        }),
+
+        ('🎯 Тип баннера и поведение', {
+            'fields': ('display_type_info', 'is_clickable', 'show_button', 'button_on_hover'),
+            'description': '''
+                <div class="help-tip danger" style="margin: 10px 0; padding: 15px; background: #fef2f2; border-radius: 8px; border-left: 5px solid #ef4444;">
+                <strong style="color: #991b1b;">Выберите тип баннера:</strong><br>
+
+                <div style="display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 15px;">
+                    <div style="padding: 15px; background: #dcfce7; border-radius: 8px; border: 2px solid #86efac; cursor: pointer;" 
+                         onclick="document.getElementById('id_is_clickable').checked = true; document.getElementById('id_show_button').checked = true; document.getElementById('id_button_on_hover').checked = false;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                            <span style="font-size: 20px;">🔼</span>
+                            <strong>Кнопка всегда видна</strong>
+                        </div>
+                        <div style="font-size: 13px; color: #065f46;">
+                            • Баннер кликабельный<br>
+                            • Кнопка отображается всегда<br>
+                            • <em>Идеально для призывов к действию</em>
+                        </div>
+                    </div>
+
+                    <div style="padding: 15px; background: #fef3c7; border-radius: 8px; border: 2px solid #fcd34d; cursor: pointer;" 
+                         onclick="document.getElementById('id_is_clickable').checked = true; document.getElementById('id_show_button').checked = true; document.getElementById('id_button_on_hover').checked = true;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                            <span style="font-size: 20px;">✨</span>
+                            <strong>Кнопка при наведении</strong>
+                        </div>
+                        <div style="font-size: 13px; color: #92400e;">
+                            • Баннер кликабельный<br>
+                            • Кнопка появляется при наведении мыши<br>
+                            • <em>Чистый дизайн + функциональность</em>
+                        </div>
+                    </div>
+
+                    <div style="padding: 15px; background: #e0e7ff; border-radius: 8px; border: 2px solid #a5b4fc; cursor: pointer;" 
+                         onclick="document.getElementById('id_is_clickable').checked = true; document.getElementById('id_show_button').checked = false;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                            <span style="font-size: 20px;">🔗</span>
+                            <strong>Весь баннер кликабелен</strong>
+                        </div>
+                        <div style="font-size: 13px; color: #1e40af;">
+                            • Весь баннер - одна большая ссылка<br>
+                            • Без кнопки<br>
+                            • <em>Идеально для промо-баннеров</em>
+                        </div>
+                    </div>
+
+                    <div style="padding: 15px; background: #f3f4f6; border-radius: 8px; border: 2px solid #d1d5db; cursor: pointer;" 
+                         onclick="document.getElementById('id_is_clickable').checked = false; document.getElementById('id_show_button').checked = false;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                            <span style="font-size: 20px;">📷</span>
+                            <strong>Статичное изображение</strong>
+                        </div>
+                        <div style="font-size: 13px; color: #4b5563;">
+                            • Не кликабельный<br>
+                            • Без кнопки<br>
+                            • <em>Для декоративных баннеров</em>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 15px; font-size: 12px; color: #991b1b; padding: 8px; background: #fee2e2; border-radius: 6px;">
+                    <strong>💡 Подсказка:</strong> Нажмите на любой блок выше для автоматической настройки
+                </div>
+                </div>
+            '''
+        }),
+
+        ('🎨 Стилизация', {
             'fields': ('text_color', 'overlay_color', 'text_position'),
-            'classes': ('collapse',)
+            'classes': ('wide', 'collapse'),
+            'description': '''
+                <div class="help-tip info" style="margin: 10px 0; padding: 15px; background: #eff6ff; border-radius: 8px; border-left: 5px solid #3b82f6;">
+                <strong style="color: #1e40af;">Визуальное оформление</strong><br>
+                • <strong>Цвет текста:</strong> Белый (#FFFFFF) по умолчанию<br>
+                • <strong>Цвет оверлея:</strong> Затемнение поверх изображения<br>
+                • <strong>Позиция текста:</strong> Слева, по центру или справа<br><br>
+
+                <strong>Популярные цвета оверлея:</strong><br>
+                • <code>rgba(0,0,0,0.4)</code> - стандартное затемнение<br>
+                • <code>rgba(147,51,234,0.6)</code> - фиолетовый<br>
+                • <code>rgba(59,130,246,0.5)</code> - синий<br>
+                • <code>#00000000</code> - без затемнения
+                </div>
+            '''
         }),
-        ('Управление показом', {
+
+        ('⚙️ Управление показом', {
             'fields': ('is_active', 'priority', 'show_on_mobile', 'show_on_desktop', 'start_date', 'end_date'),
-            'description': '<strong>Рекомендации по размерам:</strong><br>'
-                           '• Десктоп: 1920×600px (рекомендуется)<br>'
-                           '• Мобильные: 800×650px (если не указано, используется основное изображение)<br>'
-                           '• Формат: JPG или PNG, оптимизировано для web'
+            'description': '''
+                <div class="help-tip warning" style="margin: 10px 0; padding: 15px; background: #fffbeb; border-radius: 8px; border-left: 5px solid #f59e0b;">
+                <strong style="color: #92400e;">Настройки отображения</strong><br>
+                • <strong>Активен:</strong> Включить/выключить баннер<br>
+                • <strong>Приоритет:</strong> Чем выше число, тем выше баннер<br>
+                • <strong>Показывать на мобильных:</strong> Отображение на телефонах<br>
+                • <strong>Показывать на ПК:</strong> Отображение на компьютерах<br>
+                • <strong>Дата начала/окончания:</strong> Автоматическое управление
+                </div>
+            '''
+        }),
+
+        ('👁️‍🗨️ Предпросмотр', {
+            'fields': ('preview_desktop', 'preview_mobile'),
+            'classes': ('wide', 'collapse'),
+            'description': '''
+                <div class="help-tip info" style="margin: 10px 0; padding: 15px; background: #eff6ff; border-radius: 8px; border-left: 5px solid #3b82f6;">
+                <strong style="color: #1e40af;">Как будет выглядеть баннер</strong><br>
+                • Здесь вы увидите предпросмотр баннера<br>
+                • Убедитесь что изображения загружены правильно<br>
+                • Проверьте читаемость текста
+                </div>
+            '''
+        }),
+
+        ('📊 Системная информация', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
         }),
     )
 
+    actions = ['activate_banners', 'deactivate_banners', 'make_clickable', 'make_static']
+
+    def activate_banners(self, request, queryset):
+        updated = queryset.update(is_active=True)
+        self.message_user(request, f'✅ Активировано {updated} баннеров')
+
+    activate_banners.short_description = "✅ Активировать выбранные"
+
+    def deactivate_banners(self, request, queryset):
+        updated = queryset.update(is_active=False)
+        self.message_user(request, f'🚫 Деактивировано {updated} баннеров')
+
+    deactivate_banners.short_description = "🚫 Деактивировать выбранные"
+
+    def make_clickable(self, request, queryset):
+        updated = queryset.update(is_clickable=True, show_button=True)
+        self.message_user(request, f'🔗 Сделано кликабельными с кнопкой: {updated} баннеров')
+
+    make_clickable.short_description = "🔗 Сделать с кнопкой"
+
+    def make_static(self, request, queryset):
+        updated = queryset.update(is_clickable=False, show_button=False)
+        self.message_user(request, f'📷 Сделано статичными: {updated} баннеров')
+
+    make_static.short_description = "📷 Сделать статичными"
+
+    # Улучшаем форму
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+
+        # Улучшенные подсказки для полей
+        form.base_fields['button_text'].help_text = 'Оставьте пустым, если кнопка не нужна'
+        form.base_fields['click_link'].help_text = 'Куда ведет клик по всему баннеру (если кнопка скрыта)'
+        form.base_fields['priority'].help_text = 'Чем выше число, тем выше приоритет. Баннеры сортируются по убыванию приоритета.'
+        form.base_fields['overlay_color'].help_text = 'Например: rgba(0,0,0,0.4) для стандартного затемнения'
+
+        return form
+
     class Media:
         css = {
-            'all': ('admin/css/banner_admin.css',)
+            'all': (
+                'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css',
+                'admin/css/banner_admin.css',
+            )
         }
+        js = (
+            'admin/js/banner_admin.js',
+        )
 
 
 @admin.register(SeoBlock)

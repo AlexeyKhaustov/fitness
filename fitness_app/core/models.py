@@ -194,7 +194,7 @@ class VideoComment(models.Model):
 class Banner(models.Model):
     title = models.CharField('Заголовок', max_length=200)
     subtitle = models.TextField('Подзаголовок', max_length=500, blank=True)
-    button_text = models.CharField('Текст кнопки', max_length=50, default='Смотреть')
+    button_text = models.CharField('Текст кнопки', max_length=50, default='Смотреть', blank=True)
     button_link = models.CharField('Ссылка кнопки', max_length=200, default='/')
     image = models.ImageField('Изображение', upload_to='banners/')
     image_mobile = models.ImageField('Изображение (мобильное)', upload_to='banners/mobile/', blank=True)
@@ -223,6 +223,30 @@ class Banner(models.Model):
 
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
     updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+
+    # поля для кликабельности
+    is_clickable = models.BooleanField(
+        'Кликабельный баннер',
+        default=True,
+        help_text='Весь баннер становится кликабельной ссылкой'
+    )
+    click_link = models.CharField(
+        'Ссылка баннера',
+        max_length=200,
+        blank=True,
+        default='/',
+        help_text='Куда ведет клик по баннеру (если кнопка скрыта)'
+    )
+    show_button = models.BooleanField(
+        'Показывать кнопку',
+        default=True,
+        help_text='Отображать кнопку на баннере'
+    )
+    button_on_hover = models.BooleanField(
+        'Кнопка при наведении',
+        default=False,
+        help_text='Показывать кнопку только при наведении мыши'
+    )
 
     class Meta:
         verbose_name = 'Баннер'
