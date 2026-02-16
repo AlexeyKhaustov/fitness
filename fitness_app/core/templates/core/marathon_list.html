@@ -4,43 +4,6 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 py-12">
-    <!-- Заголовок -->
-    <div class="text-center mb-12">
-        <h1 class="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent">
-            Фитнес-марафоны
-        </h1>
-        <p class="text-gray-400 text-lg max-w-2xl mx-auto">
-            Интенсивные программы тренировок для достижения конкретных целей.
-            Каждый марафон — отдельная покупка с пожизненным доступом.
-        </p>
-    </div>
-
-<!-- Баннер для тех, у кого есть марафоны -->
-{% if user.is_authenticated and purchased_marathons_count and purchased_marathons_count > 0 %}
-<div class="bg-gradient-to-r from-green-900 to-emerald-900 rounded-2xl p-6 mb-8">
-    <div class="flex flex-col md:flex-row items-center">
-        <div class="mr-4 mb-4 md:mb-0">
-            <i class="fa-solid fa-fire text-4xl text-yellow-400"></i>
-        </div>
-        <div class="flex-1">
-                <h3 class="text-xl font-bold text-white mb-2">
-                    У вас {{ purchased_marathons_count }}
-                    {% if purchased_marathons_count == 1 %}марафон
-                    {% elif 2 <= purchased_marathons_count <= 4 %}марафона
-                    {% else %}марафонов
-                    {% endif %}!
-                </h3>
-            <p class="text-gray-300">Перейдите в "Мои марафоны" для продолжения тренировок</p>
-        </div>
-        <div class="mt-4 md:mt-0">
-            <a href="{% url 'my_marathons' %}"
-               class="inline-block bg-white text-green-900 hover:bg-gray-100 px-6 py-3 rounded-lg font-semibold transition-colors">
-                Мои марафоны
-            </a>
-        </div>
-    </div>
-</div>
-{% endif %}
 
     <!-- Сетка марафонов -->
     {% if marathons %}
