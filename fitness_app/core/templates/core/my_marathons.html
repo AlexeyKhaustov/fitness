@@ -27,85 +27,87 @@
         </div>
     </div>
 
-    <!-- Купленные марафоны -->
-    {% if marathon_accesses %}
-    <div class="mb-12">
-        <div class="flex items-center justify-between mb-6">
-            <h2 class="text-2xl font-bold text-white">Приобретенные марафоны</h2>
-            <span class="text-gray-400 text-sm">
-                {{ marathon_accesses|length }} из {{ purchased_marathons_count|default:"0" }}
-            </span>
-        </div>
+<!-- Купленные марафоны -->
+{% if marathon_accesses %}
+<div class="mb-12">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold text-white">Приобретенные марафоны</h2>
+        <span class="text-gray-400 text-sm">
+            {{ marathon_accesses|length }} из {{ purchased_marathons_count|default:"0" }}
+        </span>
+    </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {% for access in marathon_accesses %}
-            <div class="bg-gray-800 rounded-2xl p-6 border-2 border-green-700/30 hover:border-green-600 transition-colors">
-                <!-- Шапка -->
-                <div class="flex justify-between items-start mb-4">
-                    <div>
-                        <h3 class="text-xl font-bold text-white">{{ access.marathon.title }}</h3>
-                        <span class="text-green-400 text-sm font-semibold">
-                            <i class="fa-solid fa-cart-shopping mr-1"></i>
-                            Куплен
-                        </span>
-                    </div>
-                    <div class="text-right">
-                        <div class="text-2xl font-bold text-green-400">{{ access.amount_paid }}₽</div>
-                        <div class="text-gray-400 text-sm">{{ access.purchased_at|date:"d.m.Y" }}</div>
-                    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for access in marathon_accesses %}
+        <div class="bg-gray-800 rounded-2xl p-6 border-2 border-green-700/30 hover:border-green-600 transition-colors">
+            <!-- Заголовок сверху -->
+            <h3 class="text-xl font-bold text-white mb-4">{{ access.marathon.title }}</h3>
+
+            <!-- Статус и цена в одной строке -->
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-green-400 text-sm font-semibold">
+                    <i class="fa-solid fa-cart-shopping mr-1"></i>
+                    Куплен
+                </span>
+                <div class="text-2xl font-bold text-green-400">{{ access.amount_paid }}₽</div>
+            </div>
+
+            <!-- Дата покупки мелкими под ценой -->
+            <div class="text-right mb-4">
+                <div class="text-gray-400 text-sm">{{ access.purchased_at|date:"d.m.Y" }}</div>
+            </div>
+
+            <!-- Описание -->
+            {% if access.marathon.short_description %}
+            <p class="text-gray-300 mb-6 line-clamp-2">{{ access.marathon.short_description }}</p>
+            {% endif %}
+
+            <!-- Статистика -->
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="text-center p-3 bg-gray-900/50 rounded-lg">
+                    <div class="text-lg font-bold text-white">{{ access.marathon.total_videos_count }}</div>
+                    <div class="text-xs text-gray-400">видео</div>
                 </div>
 
-                <!-- Описание -->
-                {% if access.marathon.short_description %}
-                <p class="text-gray-300 mb-6 line-clamp-2">{{ access.marathon.short_description }}</p>
+                {% if access.marathon.get_duration_minutes %}
+                <div class="text-center p-3 bg-gray-900/50 rounded-lg">
+                    <div class="text-lg font-bold text-white">{{ access.marathon.get_duration_minutes }}</div>
+                    <div class="text-xs text-gray-400">минут</div>
+                </div>
                 {% endif %}
 
-                <!-- Статистика -->
-                <div class="grid grid-cols-2 gap-3 mb-6">
-                    <div class="text-center p-3 bg-gray-900/50 rounded-lg">
-                        <div class="text-lg font-bold text-white">{{ access.marathon.total_videos_count }}</div>
-                        <div class="text-xs text-gray-400">видео</div>
+                {% if access.valid_until %}
+                <div class="col-span-2 text-center p-3 bg-gray-900/50 rounded-lg">
+                    <div class="text-sm text-gray-400">Доступ до</div>
+                    <div class="text-lg font-bold {% if access.days_remaining < 7 %}text-red-400{% else %}text-yellow-400{% endif %}">
+                        {{ access.valid_until|date:"d.m.Y" }}
                     </div>
-
-                    {% if access.marathon.get_duration_minutes %}
-                    <div class="text-center p-3 bg-gray-900/50 rounded-lg">
-                        <div class="text-lg font-bold text-white">{{ access.marathon.get_duration_minutes }}</div>
-                        <div class="text-xs text-gray-400">минут</div>
-                    </div>
-                    {% endif %}
-
-                    {% if access.valid_until %}
-                    <div class="col-span-2 text-center p-3 bg-gray-900/50 rounded-lg">
-                        <div class="text-sm text-gray-400">Доступ до</div>
-                        <div class="text-lg font-bold {% if access.days_remaining < 7 %}text-red-400{% else %}text-yellow-400{% endif %}">
-                            {{ access.valid_until|date:"d.m.Y" }}
-                        </div>
-                        {% if access.days_remaining %}
-                        <div class="text-xs text-gray-400">осталось {{ access.days_remaining }} дней</div>
-                        {% endif %}
-                    </div>
+                    {% if access.days_remaining %}
+                    <div class="text-xs text-gray-400">осталось {{ access.days_remaining }} дней</div>
                     {% endif %}
                 </div>
-
-                <!-- Кнопки -->
-                <div class="flex gap-3">
-                    <a href="{{ access.marathon.get_absolute_url }}"
-                       class="flex-1 bg-green-600 hover:bg-green-700 text-white text-center py-2.5 rounded-lg font-semibold transition-colors">
-                        <i class="fa-solid fa-play mr-2"></i>
-                        Продолжить
-                    </a>
-
-                    <button onclick="shareMarathon('{{ access.marathon.slug }}')"
-                            class="px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
-                            title="Поделиться">
-                        <i class="fa-solid fa-share"></i>
-                    </button>
-                </div>
+                {% endif %}
             </div>
-            {% endfor %}
+
+            <!-- Кнопки -->
+            <div class="flex gap-3">
+                <a href="{{ access.marathon.get_absolute_url }}"
+                   class="flex-1 bg-green-600 hover:bg-green-700 text-white text-center py-2.5 rounded-lg font-semibold transition-colors">
+                    <i class="fa-solid fa-play mr-2"></i>
+                    Продолжить
+                </a>
+
+                <button onclick="shareMarathon('{{ access.marathon.slug }}')"
+                        class="px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors"
+                        title="Поделиться">
+                    <i class="fa-solid fa-share"></i>
+                </button>
+            </div>
         </div>
+        {% endfor %}
     </div>
-    {% endif %}
+</div>
+{% endif %}
 
     <!-- Марафоны по подписке -->
     {% if user_profile.subscription_active and subscribed_marathons_count > 0 %}
