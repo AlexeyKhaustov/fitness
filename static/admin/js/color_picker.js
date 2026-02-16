@@ -1,4 +1,3 @@
-// static/admin/js/color_picker.js
 document.addEventListener('DOMContentLoaded', function() {
     // Добавляем предпросмотр цвета для HEX полей
     const colorFields = document.querySelectorAll('input[type="text"][id*="color"]');
