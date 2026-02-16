@@ -24,13 +24,6 @@
                 Все марафоны
             </a>
 
-            {% if not user_profile.subscription_active %}
-            <a href="{% url 'profile' %}"
-               class="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white px-5 py-2.5 rounded-lg font-semibold transition-colors">
-                <i class="fa-solid fa-crown mr-2"></i>
-                Оформить подписку
-            </a>
-            {% endif %}
         </div>
     </div>
 

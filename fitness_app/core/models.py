@@ -495,7 +495,7 @@ class MarathonAccess(models.Model):
 
     # Платежная информация
     purchased_at = models.DateTimeField('Дата покупки', auto_now_add=True)
-    amount_paid = models.DecimalField('Сумма оплаты', max_digits=10, decimal_places=2)
+    amount_paid = models.DecimalField('Сумма оплаты', max_digits=10, decimal_places=0)
     payment_id = models.CharField('ID платежа', max_length=100, blank=True)
 
     # Статус
