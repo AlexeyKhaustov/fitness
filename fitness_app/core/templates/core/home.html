@@ -138,22 +138,6 @@
                     с помощью профессиональных тренировок от FitnessVideo
                 </p>
 
-                <!-- Дополнительные преимущества -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 md:mb-10">
-                    <div class="flex items-center justify-center space-x-3 text-gray-200">
-                        <i class="fa-solid fa-check-circle text-green-400 text-xl"></i>
-                        <span>Доступ с любого устройства</span>
-                    </div>
-                    <div class="flex items-center justify-center space-x-3 text-gray-200">
-                        <i class="fa-solid fa-check-circle text-green-400 text-xl"></i>
-                        <span>Тренеры эксперты</span>
-                    </div>
-                    <div class="flex items-center justify-center space-x-3 text-gray-200">
-                        <i class="fa-solid fa-check-circle text-green-400 text-xl"></i>
-                        <span>Первые результаты через 2 недели</span>
-                    </div>
-                </div>
-
                 <!-- Кнопка -->
                 <div class="flex flex-col sm:flex-row gap-4 justify-center">
                     {% if user.is_authenticated %}
@@ -165,13 +149,7 @@
                         <span>Смотреть марафоны</span>
                         <i class="fa-solid fa-arrow-right ml-3 group-hover:translate-x-1 transition-transform"></i>
                     </a>
-                    <a href="{% url 'videos' %}"
-                       class="inline-flex items-center justify-center bg-white/20 hover:bg-white/30 backdrop-blur-sm
-                              text-white font-bold rounded-full px-8 py-4 text-lg transition-all duration-300
-                              transform hover:scale-105 border border-white/20">
-                        <span>Все видео</span>
-                        <i class="fa-solid fa-play ml-3"></i>
-                    </a>
+
                     {% else %}
                     <button hx-get="/accounts/signup/" hx-target="#modal-content" hx-swap="innerHTML"
                             class="inline-flex items-center justify-center bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600
@@ -191,11 +169,6 @@
                     {% endif %}
                 </div>
 
-                <!-- Дополнительный текст -->
-                <p class="text-sm text-gray-300 mt-6 md:mt-8">
-                    <i class="fa-solid fa-shield-alt mr-2"></i>
-                    Без обязательств • Отмена в любой момент • Первые 7 дней бесплатно
-                </p>
             </div>
         </div>
     </div>
