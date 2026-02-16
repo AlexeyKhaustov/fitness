@@ -95,11 +95,12 @@
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     border: 1px solid rgba(255, 255, 255, 0.05);
     position: relative;
-    margin: 0;
+    margin: 0 auto; /* Центрирование самой карточки */
     box-sizing: border-box;
     text-decoration: none;
     color: inherit;
     display: block;
+    max-width: 350px; /* Ограничиваем максимальную ширину карточки */
 }
 
 .category-image-container {
@@ -231,6 +232,12 @@
         display: grid;
         grid-template-columns: repeat(2, 1fr);
         gap: 1.25rem;
+        justify-items: center;
+    }
+
+    .category-card {
+        max-width: 100%;
+        margin: 0;
     }
 
     .category-content {
@@ -310,8 +317,21 @@
 /* Десктоп (от 1024px) */
 @media (min-width: 1024px) {
     .categories-grid {
+        display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 1.75rem;
+        justify-content: center;
+    }
+
+    /* Центрирование когда категорий меньше 3 */
+    .categories-grid:has(:nth-child(2)):not(:has(:nth-child(3))) {
+        grid-template-columns: repeat(2, minmax(280px, 350px));
+        justify-content: center;
+    }
+
+    .categories-grid:has(:only-child) {
+        grid-template-columns: minmax(280px, 400px);
+        justify-content: center;
     }
 
     .category-content {
@@ -350,6 +370,23 @@
     .categories-grid {
         grid-template-columns: repeat(4, 1fr);
         gap: 2rem;
+        justify-content: center;
+    }
+
+    /* Центрирование когда категорий меньше 4 */
+    .categories-grid:has(:nth-child(3)):not(:has(:nth-child(4))) {
+        grid-template-columns: repeat(3, minmax(280px, 350px));
+        justify-content: center;
+    }
+
+    .categories-grid:has(:nth-child(2)):not(:has(:nth-child(3))) {
+        grid-template-columns: repeat(2, minmax(280px, 350px));
+        justify-content: center;
+    }
+
+    .categories-grid:has(:only-child) {
+        grid-template-columns: minmax(280px, 400px);
+        justify-content: center;
     }
 }
 
@@ -358,6 +395,28 @@
     .categories-grid {
         grid-template-columns: repeat(5, 1fr);
         gap: 2rem;
+        justify-content: center;
+    }
+
+    /* Центрирование когда категорий меньше 5 */
+    .categories-grid:has(:nth-child(4)):not(:has(:nth-child(5))) {
+        grid-template-columns: repeat(4, minmax(280px, 320px));
+        justify-content: center;
+    }
+
+    .categories-grid:has(:nth-child(3)):not(:has(:nth-child(4))) {
+        grid-template-columns: repeat(3, minmax(280px, 350px));
+        justify-content: center;
+    }
+
+    .categories-grid:has(:nth-child(2)):not(:has(:nth-child(3))) {
+        grid-template-columns: repeat(2, minmax(280px, 350px));
+        justify-content: center;
+    }
+
+    .categories-grid:has(:only-child) {
+        grid-template-columns: minmax(280px, 400px);
+        justify-content: center;
     }
 }
 
@@ -371,6 +430,7 @@
         background: rgba(139, 92, 246, 0.3);
     }
 }
+
 /* ===== КОНЕЦ НОВЫХ СТИЛЕЙ ДЛЯ КАТЕГОРИЙ ===== */
 
 /* Выпадающее меню */
@@ -387,35 +447,6 @@
     from { opacity: 0; transform: translateY(-10px); }
     to { opacity: 1; transform: translateY(0); }
 }
-
-    /* Категории через Flexbox (более гибко) */
-    .categories-container {
-        width: 100%;
-    }
-
-    /* Для случаев когда категорий мало */
-    @media (min-width: 1024px) {
-        .categories-grid:has(:nth-child(4)):not(:has(:nth-child(5))) {
-            /* Если 4 категории */
-            justify-content: center;
-        }
-
-        .categories-grid:has(:nth-child(3)):not(:has(:nth-child(4))) {
-            /* Если 3 категории */
-            justify-content: center;
-        }
-
-        .categories-grid:has(:nth-child(2)):not(:has(:nth-child(3))) {
-            /* Если 2 категории */
-            justify-content: center;
-            gap: 2rem;
-        }
-
-        .categories-grid:has(:only-child) {
-            /* Если 1 категория */
-            justify-content: center;
-        }
-    }
 
     /* SEO блоки - GRID система */
     .seo-blocks-container {
