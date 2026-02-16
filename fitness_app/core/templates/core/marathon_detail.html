@@ -66,74 +66,94 @@
                 {% endif %}
 
                 <!-- Статистика -->
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-                    <div class="text-center p-4 bg-gray-900/50 rounded-xl">
-                        <div class="text-2xl font-bold text-white">{{ marathon_videos_count }}</div>
-                        <div class="text-gray-400 text-sm">эксклюзивных видео</div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-8">
+                    <!-- Эксклюзивные видео -->
+                    <div class="text-center p-3 md:p-4 bg-gray-900/50 rounded-xl">
+                        <div class="text-xl md:text-2xl font-bold text-white">{{ marathon_videos_count }}</div>
+                        <div class="text-xs md:text-sm text-gray-400 leading-tight">
+                            {% if marathon_videos_count == 1 %}
+                                видео
+                            {% else %}
+                                видео
+                            {% endif %}
+                        </div>
                     </div>
 
+                    <!-- Длительность (если есть) -->
                     {% if marathon.get_duration_minutes %}
-                    <div class="text-center p-4 bg-gray-900/50 rounded-xl">
-                        <div class="text-2xl font-bold text-white">{{ marathon.get_duration_minutes }}</div>
-                        <div class="text-gray-400 text-sm">минут материала</div>
+                    <div class="text-center p-3 md:p-4 bg-gray-900/50 rounded-xl">
+                        <div class="text-xl md:text-2xl font-bold text-white">{{ marathon.get_duration_minutes }}</div>
+                        <div class="text-xs md:text-sm text-gray-400 leading-tight">
+                            {% if marathon.get_duration_minutes == 1 %}
+                                минута
+                            {% elif marathon.get_duration_minutes < 5 %}
+                                минуты
+                            {% else %}
+                                минут
+                            {% endif %}
+                        </div>
                     </div>
                     {% endif %}
 
-                    <div class="text-center p-4 bg-gray-900/50 rounded-xl">
-                        <div class="text-2xl font-bold text-orange-400">{{ marathon.sales_count|default:"0" }}</div>
-                        <div class="text-gray-400 text-sm">приобрели</div>
+                    <!-- Купили -->
+                    <div class="text-center p-3 md:p-4 bg-gray-900/50 rounded-xl">
+                        <div class="text-xl md:text-2xl font-bold text-orange-400">{{ marathon.sales_count|default:"0" }}</div>
+                        <div class="text-xs md:text-sm text-gray-400 leading-tight">
+                            {% if marathon.sales_count == 1 %}
+                                купили
+                            {% elif marathon.sales_count in "234" %}
+                                купили
+                            {% else %}
+                                купили
+                            {% endif %}
+                        </div>
                     </div>
 
-                    <div class="text-center p-4 bg-gray-900/50 rounded-xl">
-                        <div class="text-2xl font-bold text-green-400">{{ marathon.price }}₽</div>
-                        <div class="text-gray-400 text-sm">цена</div>
+                    <!-- Цена -->
+                    <div class="text-center p-3 md:p-4 bg-gray-900/50 rounded-xl">
+                        <div class="text-xl md:text-2xl font-bold text-green-400">{{ marathon.price }}₽</div>
+                        <div class="text-xs md:text-sm text-gray-400 leading-tight">
+                            {% if marathon.price == 1 %}
+                                рубль
+                            {% elif marathon.price < 5 %}
+                                рубля
+                            {% else %}
+                                рублей
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
 
                 <!-- Цена и кнопки -->
                 <div class="space-y-4">
                     {% if not has_access %}
-                        <div class="flex items-center gap-4">
-                            <div>
-                                <div class="text-3xl font-bold text-green-400">{{ marathon.price }}₽</div>
-                                <div class="text-gray-400 text-sm">Разовая покупка • Доступ навсегда</div>
-                            </div>
-
-                            <button onclick="buyMarathon('{{ marathon.slug }}')"
-                                    class="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-3 px-6 rounded-lg text-lg transition-all hover:scale-105">
-                                Купить марафон
-                            </button>
+                        <!-- Марафон не куплен -->
+                        <div class="text-gray-400 text-sm mb-2">
+                            <i class="fa-solid fa-info-circle mr-1 text-purple-400"></i>
+                            После покупки вы получите доступ к {{ marathon_videos_count }} эксклюзивным видео марафона
                         </div>
 
-                        <p class="text-gray-400 text-sm">
-                            <i class="fa-solid fa-info-circle mr-1"></i>
-                            После покупки вы получите доступ к {{ marathon_videos_count }} эксклюзивным видео марафона
-                        </p>
+                        <button onclick="buyMarathon('{{ marathon.slug }}')"
+                                class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-4 px-6 rounded-lg text-lg transition-all hover:scale-105">
+                            <i class="fa-solid fa-cart-shopping mr-2"></i>
+                            Купить марафон за {{ marathon.price }}₽
+                        </button>
                     {% else %}
-                        <div class="flex items-center gap-4">
-                            <div class="flex-1">
-                                <div class="text-green-400 font-semibold mb-2">
-                                    <i class="fa-solid fa-check mr-2"></i>
-                                    У вас есть доступ к марафону
-                                </div>
-                                {% if access_obj %}
-                                <div class="text-gray-400 text-sm">
-                                    Куплен {{ access_obj.purchased_at|date:"d.m.Y" }}
-                                    {% if access_obj.valid_until %}
-                                    • Доступ до {{ access_obj.valid_until|date:"d.m.Y" }}
-                                    {% endif %}
-                                </div>
-                                {% endif %}
+                        <!-- Марафон куплен -->
+                        {% if marathon_videos_count > 0 %}
+                            {% if access_obj.valid_until %}
+                            <div class="text-gray-400 text-sm mb-2 text-right">
+                                <i class="fa-regular fa-calendar mr-1 text-purple-400"></i>
+                                Доступ до {{ access_obj.valid_until|date:"d.m.Y" }}
                             </div>
+                            {% endif %}
 
-                            {% if marathon_videos_count > 0 %}
                             <a href="#marathon-videos"
-                               class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-colors">
+                               class="block w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-6 rounded-lg text-lg transition-all hover:scale-105 text-center">
                                 <i class="fa-solid fa-play mr-2"></i>
                                 Начать тренировки
                             </a>
-                            {% endif %}
-                        </div>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>
@@ -154,10 +174,9 @@
     {% if teaser_videos %}
     <div class="mb-12">
         <div class="flex items-center justify-between mb-6">
-            <h2 class="text-2xl font-bold text-white">Бесплатные видео для ознакомления</h2>
             <span class="text-green-400 font-semibold text-sm">
                 <i class="fa-solid fa-unlock mr-1"></i>
-                Доступно всем
+                Доступно
             </span>
         </div>
 
@@ -201,27 +220,28 @@
     {% endif %}
 
     <!-- Эксклюзивные видео марафона -->
-    <div id="marathon-videos" class="mt-12">
-        <div class="flex items-center justify-between mb-6">
-            <h2 class="text-2xl font-bold text-white">
-                Программа марафона
-                <span class="{% if has_access %}text-green-400{% else %}text-red-400{% endif %} text-lg">
-                    ({{ marathon_videos_count }} эксклюзивных видео)
-                </span>
-            </h2>
+        <div id="marathon-videos" class="mt-12">
+            <!-- Заголовок с адаптивным расположением -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+                <h2 class="text-xl md:text-2xl font-bold text-white">
+                    Программа марафона
+                    <span class="block sm:inline text-base sm:text-lg {% if has_access %}text-green-400{% else %}text-red-400{% endif %} sm:ml-2">
+                        ({{ marathon_videos_count }} эксклюзивных видео)
+                    </span>
+                </h2>
 
-            {% if has_access %}
-            <span class="text-green-400 font-semibold">
-                <i class="fa-solid fa-check mr-1"></i>
-                Полный доступ
-            </span>
-            {% else %}
-            <span class="text-red-400 font-semibold">
-                <i class="fa-solid fa-lock mr-1"></i>
-                Требуется покупка
-            </span>
-            {% endif %}
-        </div>
+                {% if has_access %}
+                <div class="flex items-center text-green-400 font-semibold bg-green-900/20 px-3 py-1.5 rounded-full w-fit">
+                    <i class="fa-solid fa-check mr-1"></i>
+                    <span>Полный доступ</span>
+                </div>
+                {% else %}
+                <div class="flex items-center text-red-400 font-semibold bg-red-900/20 px-3 py-1.5 rounded-full w-fit">
+                    <i class="fa-solid fa-lock mr-1"></i>
+                    <span>Требуется покупка</span>
+                </div>
+                {% endif %}
+            </div>
 
         {% if has_access and marathon_videos %}
         <!-- Полный доступ -->
@@ -301,10 +321,6 @@
                         Купить за {{ marathon.price }}₽
                     </button>
 
-                    <p class="text-gray-300 text-sm">
-                        <i class="fa-solid fa-info-circle mr-1"></i>
-                        Разовая покупка • Пожизненный доступ
-                    </p>
                 </div>
             </div>
         </div>

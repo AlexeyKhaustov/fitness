@@ -422,7 +422,7 @@ class Marathon(models.Model):
                                     help_text='HEX цвет (например: #6366f1 для фиолетового)')
 
     # Цена и доступ (ТОЛЬКО разовая покупка)
-    price = models.DecimalField('Цена', max_digits=10, decimal_places=2, default=0)
+    price = models.DecimalField('Цена', max_digits=10, decimal_places=0, default=0)
 
     # Связи
     teaser_videos = models.ManyToManyField(  # ← ИЗМЕНИЛИ НАЗВАНИЕ
