@@ -74,7 +74,7 @@
     transform: scale(1.1);
 }
 
-/* ===== НОВЫЕ СТИЛИ ДЛЯ КАТЕГОРИЙ (Mobile First) ===== */
+/* ===== СТИЛИ ДЛЯ КАТЕГОРИЙ (Mobile First) ===== */
 * {
     max-width: 100%;
     box-sizing: border-box;
@@ -681,6 +681,59 @@
     .seo-block {
         animation: fadeInUp 0.6s ease-out;
     }
+
+      /* ===== СТИЛИ ДЛЯ ПРОКРУТКИ SEO БЛОКОВ ===== */
+
+/* Контейнер текста в SEO блоке с прокруткой */
+.seo-block .scrollable-content {
+    max-height: 400px; /* Максимальная высота до появления скролла */
+    overflow-y: auto;  /* Вертикальная прокрутка */
+    padding-right: 10px; /* Отступ для красоты */
+    scrollbar-width: thin; /* Тонкий скролл для Firefox */
+    scrollbar-color: #4a5568 #2d3748; /* Цвет скролла для Firefox */
+}
+
+/* Стилизация скролла для WebKit браузеров (Chrome, Safari, Edge) */
+.seo-block .scrollable-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.seo-block .scrollable-content::-webkit-scrollbar-track {
+    background: #2d3748;
+    border-radius: 10px;
+}
+
+.seo-block .scrollable-content::-webkit-scrollbar-thumb {
+    background: #4a5568;
+    border-radius: 10px;
+    transition: background 0.3s ease;
+}
+
+.seo-block .scrollable-content::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+}
+
+/* Для мобильных устройств - увеличиваем область касания */
+@media (max-width: 640px) {
+    .seo-block .scrollable-content {
+        max-height: 350px;
+        -webkit-overflow-scrolling: touch; /* Плавный скролл на iOS */
+    }
+}
+
+/* Для планшетов */
+@media (min-width: 641px) and (max-width: 1024px) {
+    .seo-block .scrollable-content {
+        max-height: 380px;
+    }
+}
+
+/* Для десктопов */
+@media (min-width: 1025px) {
+    .seo-block .scrollable-content {
+        max-height: 450px;
+    }
+}
   </style>
 </head>
 <body class="bg-gray-900 text-white min-h-screen flex flex-col">
