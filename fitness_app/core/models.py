@@ -27,6 +27,25 @@ class Category(models.Model):
         help_text='Рекомендуемый размер: 200×200px. Если загружена картинка, она будет отображаться вместо иконки'
     )
     color = models.CharField('Цвет (Tailwind)', max_length=300, default='bg-gradient-to-br from-purple-600 to-pink-600')
+    description = models.TextField(
+        'Краткое описание',
+        max_length=200,
+        blank=True,
+        help_text='Краткое описание категории (до 200 символов). Отображается под названием.'
+    )
+
+    is_featured = models.BooleanField(
+        'Рекомендуемая',
+        default=False,
+        help_text='Выделить категорию звездочкой на главной странице'
+    )
+
+    tags = models.CharField(
+        'Теги',
+        max_length=100,
+        blank=True,
+        help_text='Теги через запятую (например: для начинающих, дома, без инвентаря). Отображаются на планшетах и ПК.'
+    )
 
     class Meta:
         verbose_name = 'Категория'

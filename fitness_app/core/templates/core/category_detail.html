@@ -1,14 +1,64 @@
 {% extends 'core/base.html' %}
-{% block title %}{{ category.name }}{% endblock %}
+{% load category_tags %}
+
+{% block title %}{{ category.name }} - FitnessVideo{% endblock %}
 
 {% block content %}
-<div class="max-w-7xl mx-auto px-4 py-12">
-    <div class="text-center mb-12 text-center">
-        <i class="fa-solid fa-{{ category.icon }} text-6xl {{ category.color|slice:":17" }} bg-clip-text text-transparent"></i>
-        <h1 class="text-5xl font-bold mt-4">{{ category.name }}</h1>
-        <p class="text-gray-400 mt-2">{{ category.videos.count }} видео</p>
+<div class="max-w-7xl mx-auto px-4 sm:px-4 md:px-6 lg:px-8 py-8 md:py-12">
+    <!-- Шапка категории - адаптивная -->
+    <div class="text-center mb-8 md:mb-12">
+        <!-- Иконка/картинка -->
+        <div class="inline-flex items-center justify-center w-16 h-16 md:w-20 md:h-20 lg:w-24 lg:h-24
+                    rounded-full bg-gradient-to-r from-purple-600 to-pink-600 mb-4 md:mb-6">
+            {% if category.image %}
+                <img src="{{ category.image.url }}"
+                     alt="{{ category.name }}"
+                     class="w-10 h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 object-contain">
+            {% else %}
+                <i class="fa-solid fa-{{ category.icon|default:'film' }} text-2xl md:text-3xl lg:text-4xl text-white"></i>
+            {% endif %}
+        </div>
+
+        <!-- Название -->
+        <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold mb-3 md:mb-4 px-2">
+            {{ category.name }}
+        </h1>
+
+        <!-- Описание -->
+        {% if category.description %}
+        <p class="text-gray-300 text-base md:text-lg max-w-2xl mx-auto mb-4 md:mb-6 px-4">
+            {{ category.description }}
+        </p>
+        {% endif %}
+
+        <!-- Мета-информация -->
+        <div class="flex flex-wrap items-center justify-center gap-3 md:gap-6 text-sm md:text-base text-gray-400">
+            <span class="flex items-center">
+                <i class="fa-solid fa-video mr-2"></i>
+                {{ category.videos.count }} видео
+            </span>
+
+            {% if category.tags %}
+            <span class="flex items-center">
+                <i class="fa-solid fa-tags mr-2"></i>
+                <span class="flex flex-wrap gap-2">
+                    {% for tag in category.tags|split:","|slice:":3" %}
+                    <span class="bg-gray-800 px-2 py-1 rounded-full text-xs">{{ tag }}</span>
+                    {% endfor %}
+                </span>
+            </span>
+            {% endif %}
+
+            {% if category.is_featured %}
+            <span class="flex items-center text-yellow-400">
+                <i class="fa-solid fa-star mr-2"></i>
+                Рекомендуемая
+            </span>
+            {% endif %}
+        </div>
     </div>
 
+    <!-- Сетка видео - используем существующий шаблон -->
     {% include 'core/partials/video_grid.html' with videos=category.videos.all %}
 </div>
 {% endblock %}

@@ -48,14 +48,20 @@ from django.contrib import admin
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ['name', 'slug', 'has_image_display', 'icon', 'color', 'image_preview']
-    list_editable = ['icon', 'color']
+    # ИСПРАВЛЕНО: добавили icon и color в list_display
+    list_display = ['name', 'slug', 'icon', 'color', 'has_image_display', 'is_featured', 'videos_count',
+                    'image_preview']
+    list_editable = ['icon', 'color', 'is_featured']  # теперь работает, т.к. поля есть в list_display
+    list_filter = ['is_featured']
     prepopulated_fields = {'slug': ('name',)}
-    search_fields = ['name']
+    search_fields = ['name', 'description', 'tags']
 
-    # Новые поля для отображения
+    def videos_count(self, obj):
+        return obj.videos.count()
+
+    videos_count.short_description = 'Видео'
+
     def has_image_display(self, obj):
-        """Отображает статус наличия картинки"""
         if obj.has_image:
             return '✅ Есть картинка'
         return '📁 Только иконка'
@@ -63,7 +69,6 @@ class CategoryAdmin(admin.ModelAdmin):
     has_image_display.short_description = 'Картинка'
 
     def image_preview(self, obj):
-        """Превью картинки в списке"""
         if obj.has_image:
             return format_html(
                 '<img src="{}" style="max-height: 40px; max-width: 40px; border-radius: 5px;" />',
@@ -75,188 +80,35 @@ class CategoryAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Основная информация', {
-            'fields': ('name', 'slug', 'color'),
-            'description': mark_safe('''
-                <div style="background: #f0f7ff; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
-                <strong>📋 Основные настройки категории</strong>
-                </div>
-            ''')
+            'fields': ('name', 'slug', 'color', 'description', 'is_featured'),
+            'description': 'Основные настройки категории'
         }),
         ('Визуальное оформление', {
-            'fields': ('image', 'icon'),
-            'description': mark_safe('''
-                <div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
-                <strong>🎨 Визуальное оформление (приоритет отображения)</strong><br>
-                • <strong>Приоритет 1</strong>: Если загружена картинка, она будет отображаться<br>
-                • <strong>Приоритет 2</strong>: Если картинки нет, используется иконка Font Awesome<br>
-                • <strong>Рекомендации для картинок</strong>:<br>
-                  - Размер: 200×200px (квадратная)<br>
-                  - Формат: PNG с прозрачным фоном<br>
-                  - Вес: ≤ 100KB для быстрой загрузки<br>
-                  - Стиль: Единый стиль для всех категорий
-                </div>
-            ''')
-        }),
-        ('Иконка Font Awesome (резервный вариант)', {
-            'fields': (),
-            'description': mark_safe('''
-                <div style="background: #e7f6e7; padding: 10px; border-radius: 5px; margin-bottom: 10px;">
-                <strong>🖼️ Иконка Font Awesome (используется если нет картинки)</strong><br>
-                • Введите название иконки из Font Awesome 6<br>
-                • Примеры: dumbbell, running, heart-pulse, yoga, fire, apple-whole<br>
-                • Список всех иконок: <a href="https://fontawesome.com/icons" target="_blank">fontawesome.com/icons</a><br>
-                • Префикс <strong>fa-</strong> добавляется автоматически
-                </div>
-            '''),
-            'classes': ('collapse',)
+            'fields': ('image', 'icon', 'tags'),
+            'description': '''
+                <strong>🎨 Оформление категории</strong><br>
+                • <strong>Картинка</strong>: приоритетный вариант (200×200px)<br>
+                • <strong>Иконка</strong>: используется если нет картинки (например: dumbbell, running)<br>
+                • <strong>Теги</strong>: через запятую, показываются на планшетах и ПК
+            '''
         }),
     )
 
-    # Правильный порядок полей в форме
-    def get_fieldsets(self, request, obj=None):
-        fieldsets = list(self.fieldsets)
-        # Добавляем поле icon в визуальное оформление
-        fieldsets[1][1]['fields'] = ('image', 'icon')
-        return fieldsets
+    actions = ['clear_images', 'make_featured', 'remove_featured']
 
-    def get_form(self, request, obj=None, **kwargs):
-        """Кастомизация формы с улучшенными подсказками"""
-        form = super().get_form(request, obj, **kwargs)
+    def make_featured(self, request, queryset):
+        queryset.update(is_featured=True)
+        self.message_user(request, f'{queryset.count()} категорий отмечены как рекомендуемые')
 
-        # Определяем примеры градиентов
-        color_examples = [
-            {'name': 'Силовой тренинг', 'gradient': 'bg-gradient-to-br from-red-600 to-orange-600',
-             'color': '#dc2626,#ea580c'},
-            {'name': 'Кардио', 'gradient': 'bg-gradient-to-br from-green-600 to-teal-600', 'color': '#16a34a,#0d9488'},
-            {'name': 'Йога', 'gradient': 'bg-gradient-to-br from-purple-600 to-pink-600', 'color': '#7c3aed,#db2777'},
-            {'name': 'Питание', 'gradient': 'bg-gradient-to-br from-yellow-500 to-amber-600',
-             'color': '#eab308,#d97706'},
-            {'name': 'Плавание', 'gradient': 'bg-gradient-to-br from-blue-600 to-cyan-600', 'color': '#2563eb,#0891b2'},
-            {'name': 'Медитация', 'gradient': 'bg-gradient-to-br from-indigo-600 to-violet-600',
-             'color': '#4f46e5,#7c3aed'},
-        ]
+    make_featured.short_description = "⭐ Отметить как рекомендуемые"
 
-        # Создаем HTML для примеров градиентов
-        color_examples_html = ''
-        for example in color_examples:
-            colors = example['color'].split(',')
-            gradient_name = example['name']
-            gradient_code = example['gradient']
+    def remove_featured(self, request, queryset):
+        queryset.update(is_featured=False)
+        self.message_user(request, f'{queryset.count()} категорий убраны из рекомендуемых')
 
-            color_examples_html += f'''
-                <div class="color-example" 
-                     data-gradient="{gradient_code}"
-                     onclick="copyGradientToField('{gradient_code}')"
-                     title="Кликните, чтобы вставить: {gradient_code}"
-                     style="padding: 12px 8px; background: linear-gradient(135deg, {colors[0]}, {colors[1]}); 
-                            border-radius: 8px; color: white; text-align: center; 
-                            font-size: 12px; font-weight: 600; cursor: pointer; 
-                            transition: all 0.3s; border: 2px solid rgba(255, 255, 255, 0.1);
-                            box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-bottom: 8px;">
-                    <div style="font-weight: 600; margin-bottom: 4px; position: relative; z-index: 2;">
-                        {gradient_name}
-                    </div>
-                    <div class="gradient-code" style="font-size: 10px; opacity: 0.9; position: relative; z-index: 2;">
-                        {gradient_code}
-                    </div>
-                </div>
-            '''
-
-        # Подсказки для цвета с кликабельными примерами - БЕЗ format_html
-        color_help_text = f'''
-            <div class="help-tip success" style="margin-top: 10px; padding: 15px; background: #f0fdf4; border-radius: 8px; border-left: 5px solid #10b981;">
-                <strong style="color: #065f46;">🎨 Примеры градиентов Tailwind (кликните для выбора):</strong><br>
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px;">
-                    {color_examples_html}
-                </div>
-                <div style="margin-top: 15px; font-size: 12px; color: #065f46; padding: 8px; background: #dcfce7; border-radius: 6px;">
-                    <strong>💡 Как использовать:</strong> Нажмите на любой цветной блок выше, чтобы автоматически вставить градиент в поле.
-                </div>
-            </div>
-
-            <div class="help-tip info" style="margin-top: 10px; padding: 15px; background: #eff6ff; border-radius: 8px; border-left: 5px solid #3b82f6;">
-                <strong style="color: #1e40af;">📝 Формат градиента:</strong><br>
-                <code style="display: block; background: #1f2937; color: #e5e7eb; padding: 8px; border-radius: 6px; margin: 10px 0; font-family: monospace;">
-                    bg-gradient-to-направление from-цвет-оттенок to-цвет-оттенок
-                </code>
-                <div style="margin-top: 8px; font-size: 13px;">
-                    <strong>Направления:</strong> tr (top-right), br (bottom-right), tl (top-left), bl (bottom-left)<br>
-                    <strong>Цвета:</strong> red, orange, yellow, green, teal, blue, indigo, purple, pink<br>
-                    <strong>Оттенки:</strong> 50, 100, 200, 300, 400, 500, 600, 700, 800, 900
-                </div>
-            </div>
-
-            <div class="help-tip warning" style="margin-top: 10px; padding: 15px; background: #fffbeb; border-radius: 8px; border-left: 5px solid #f59e0b;">
-                <strong style="color: #92400e;">⚠️ Проверка градиента:</strong><br>
-                После вставки градиента проверьте его на сайте. Некоторые комбинации цветов могут плохо сочетаться.
-            </div>
-        '''
-
-        # Подсказки для картинки
-        image_help_text = '''
-            <div class="help-tip info" style="margin-top: 10px; padding: 15px; background: #eff6ff; border-radius: 8px; border-left: 5px solid #3b82f6;">
-                <strong style="color: #1e40af;">📸 Рекомендации по картинкам:</strong><br>
-                <ul style="margin: 5px 0 0 20px; padding: 0;">
-                    <li>Формат: PNG с прозрачным фоном</li>
-                    <li>Размер: 200×200px (квадратная)</li>
-                    <li>Вес: ≤ 100KB для быстрой загрузки</li>
-                    <li>Стиль: Единый стиль для всех категорий</li>
-                </ul>
-            </div>
-        '''
-
-        # Подсказки для иконки
-        icon_help_text = '''
-            <div class="help-tip warning" style="margin-top: 10px; padding: 15px; background: #fffbeb; border-radius: 8px; border-left: 5px solid #f59e0b;">
-                <strong style="color: #92400e;">🖼️ Используется если нет картинки</strong><br>
-                • Только название (без "fa-")<br>
-                • Пример: "dumbbell" → отобразится как <i class="fa-solid fa-dumbbell"></i><br>
-                • <a href="https://fontawesome.com/search?o=r&m=free" target="_blank" style="color: #92400e; text-decoration: underline;">
-                    Поиск иконок Font Awesome
-                </a>
-            </div>
-        '''
-
-        # Подсказка для имени
-        name_help_text = '''
-            <div class="help-tip info" style="margin-top: 5px; padding: 10px; background: #eff6ff; border-radius: 6px; font-size: 13px;">
-                Название категории будет отображаться на сайте
-            </div>
-        '''
-
-        # Подсказка для slug
-        slug_help_text = '''
-            <div class="help-tip warning" style="margin-top: 5px; padding: 10px; background: #fffbeb; border-radius: 6px; font-size: 13px;">
-                Часть URL адреса. Используйте только латинские буквы, цифры, дефисы и подчеркивания.
-                Оставьте пустым для автоматического создания.
-            </div>
-        '''
-
-        # Применяем подсказки с использованием mark_safe
-        form.base_fields['color'].help_text = mark_safe(color_help_text)
-        form.base_fields['image'].help_text = mark_safe(image_help_text)
-        form.base_fields['icon'].help_text = mark_safe(icon_help_text)
-        form.base_fields['name'].help_text = mark_safe(name_help_text)
-        form.base_fields['slug'].help_text = mark_safe(slug_help_text)
-
-        return form
-
-    class Media:
-        css = {
-            'all': (
-                'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css',
-                'admin/css/category_admin.css',
-                'admin/css/base_overrides.css',
-            )
-        }
-        js = (
-            'admin/js/fontawesome_help.js',
-        )
-
-    actions = ['clear_images', 'restore_icons']
+    remove_featured.short_description = "📌 Убрать из рекомендуемых"
 
     def clear_images(self, request, queryset):
-        """Очистить картинки у выбранных категорий"""
         count = 0
         for category in queryset:
             if category.image:
@@ -267,16 +119,6 @@ class CategoryAdmin(admin.ModelAdmin):
         self.message_user(request, f'Картинки удалены у {count} категорий')
 
     clear_images.short_description = "🗑️ Удалить картинки"
-
-    def restore_icons(self, request, queryset):
-        """Восстановить стандартные иконки"""
-        for category in queryset:
-            if not category.icon:
-                category.icon = 'film'
-                category.save()
-        self.message_user(request, f'Иконки восстановлены у {queryset.count()} категорий')
-
-    restore_icons.short_description = "🔄 Восстановить иконки"
 
 
 @admin.register(Banner)

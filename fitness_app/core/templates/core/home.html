@@ -1,5 +1,6 @@
 {% extends 'core/base.html' %}
 {% load static %}
+{% load category_tags %}
 
 {% block title %}Главная - FitnessVideo{% endblock %}
 
@@ -21,31 +22,85 @@
     </h1>
   </div>
 
-<div id="categories" class="mb-16">
+<div id="categories" class="mb-12 md:mb-16">
+    <h2 class="text-2xl md:text-3xl lg:text-4xl font-bold text-center mb-6 md:mb-8 lg:mb-12 text-white px-4">
+        Направления тренировок
+    </h2>
 
-    <div class="categories-grid">
-        {% for cat in categories %}
-        <a href="{% url 'category_detail' cat.slug %}"
-           class="category-card group relative overflow-hidden rounded-2xl shadow-2xl transform transition-all duration-300 hover:scale-105">
-            <div class="{{ cat.color }} p-8 h-full flex flex-col items-center justify-center text-white">
-                {% if cat.image %}
-                    <img src="{{ cat.image.url }}"
-                         alt="{{ cat.name }}"
-                         class="h-16 w-16 object-contain mb-4 group-hover:animate-pulse">
-                {% else %}
-                    <i class="fa-solid fa-{{ cat.icon|default:'film' }} text-5xl mb-4 group-hover:animate-pulse"></i>
-                {% endif %}
-                <h3 class="text-xl font-bold text-center">{{ cat.name }}</h3>
-                <p class="text-sm opacity-80 mt-2">{{ cat.videos.count }} видео</p>
+    <div class="max-w-7xl mx-auto px-4 sm:px-4 md:px-6 lg:px-8">
+        <div class="categories-grid">
+            {% for cat in categories %}
+            <a href="{% url 'category_detail' cat.slug %}"
+               class="category-card {% if cat.is_featured %}featured{% endif %} group">
+
+                <div class="category-image-container">
+                    {% if cat.image %}
+                        <img src="{{ cat.image.url }}"
+                             alt="{{ cat.name }}"
+                             class="category-image"
+                             loading="lazy">
+                    {% else %}
+                        <!-- Fallback с градиентом -->
+                        <div class="fallback-gradient {{ cat.color }}">
+                            <i class="fa-solid fa-{{ cat.icon|default:'film' }}"></i>
+                        </div>
+                    {% endif %}
+
+                    <!-- Иконка при наведении -->
+                    <div class="icon-overlay">
+                        <i class="fa-solid fa-arrow-right text-white"></i>
+                    </div>
+
+                    <!-- Бейдж с количеством видео -->
+                    <div class="category-badge">
+                        <i class="fa-solid fa-video mr-1"></i>
+                        {{ cat.videos.count }}
+                    </div>
+                </div>
+
+                <div class="category-content">
+                    <!-- Теги (показываются с планшетов) -->
+                    {% if cat.tags %}
+                    <div class="category-tags">
+                        {% for tag in cat.tags|split:","|slice:":3" %}
+                        <span class="category-tag">{{ tag }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Название категории -->
+                    <h3 class="category-name">
+                        <span>{{ cat.name }}</span>
+                        {% if cat.is_featured %}
+                        <span class="text-yellow-400 text-xl" title="Рекомендуемая категория">★</span>
+                        {% endif %}
+                    </h3>
+
+                    <!-- Описание -->
+                    {% if cat.description %}
+                    <p class="category-description">
+                        {{ cat.description }}
+                    </p>
+                    {% else %}
+                    <p class="category-description">
+                        {{ cat.videos.count }} профессиональных тренировок
+                    </p>
+                    {% endif %}
+
+                    <!-- Кнопка действия -->
+                    <div class="category-action-button">
+                        <span>Смотреть тренировки</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </div>
+                </div>
+            </a>
+            {% empty %}
+            <div class="col-span-full text-center py-8 md:py-12 text-gray-500">
+                <i class="fa-solid fa-film text-4xl md:text-5xl mb-4"></i>
+                <p class="text-lg">Категории пока не добавлены</p>
             </div>
-            <div class="absolute inset-0 bg-black opacity-0 group-hover:opacity-30 transition-opacity"></div>
-        </a>
-        {% empty %}
-        <div class="col-span-full text-center py-12 text-gray-500">
-            <i class="fa-solid fa-film text-5xl mb-4"></i>
-            <p>Категории пока не добавлены</p>
+            {% endfor %}
         </div>
-        {% endfor %}
     </div>
 </div>
 
