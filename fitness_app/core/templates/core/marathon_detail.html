@@ -111,7 +111,7 @@
 
                     <!-- Цена -->
                     <div class="text-center p-3 md:p-4 bg-gray-900/50 rounded-xl">
-                        <div class="text-xl md:text-2xl font-bold text-green-400">{{ marathon.price }}₽</div>
+                        <div class="text-xl md:text-2xl font-bold text-green-400">{{ marathon.price }}</div>
                         <div class="text-xs md:text-sm text-gray-400 leading-tight">
                             {% if marathon.price == 1 %}
                                 рубль
@@ -136,7 +136,7 @@
                         <button onclick="buyMarathon('{{ marathon.slug }}')"
                                 class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-4 px-6 rounded-lg text-lg transition-all hover:scale-105">
                             <i class="fa-solid fa-cart-shopping mr-2"></i>
-                            Купить марафон за {{ marathon.price }}₽
+                            Купить марафон за {{ marathon.price }}
                         </button>
                     {% else %}
                         <!-- Марафон куплен -->
@@ -278,7 +278,6 @@
                         <h3 class="font-bold text-white mb-2 line-clamp-2">{{ video.title }}</h3>
                         <div class="flex items-center justify-between text-gray-400 text-sm">
                             <span>{{ video.views }} просмотров</span>
-                            <span>Урок {{ video.order|default:forloop.counter }}</span>
                         </div>
                     </div>
                 </a>
@@ -318,7 +317,7 @@
 
                     <button onclick="buyMarathon('{{ marathon.slug }}')"
                             class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-3 px-6 rounded-lg transition-all hover:scale-105 mb-4">
-                        Купить за {{ marathon.price }}₽
+                        Купить за {{ marathon.price }}
                     </button>
 
                 </div>

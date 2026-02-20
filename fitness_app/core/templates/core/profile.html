@@ -63,41 +63,41 @@
           </div>
         </div>
 
-        <div class="bg-gray-900 rounded-xl p-6">
-          <h3 class="text-lg font-bold text-white mb-4 flex items-center">
-            <i class="fa-solid fa-crown mr-3 text-yellow-400"></i>
-            Статус подписки
-          </h3>
+<!--        <div class="bg-gray-900 rounded-xl p-6">-->
+<!--          <h3 class="text-lg font-bold text-white mb-4 flex items-center">-->
+<!--            <i class="fa-solid fa-crown mr-3 text-yellow-400"></i>-->
+<!--            Статус подписки-->
+<!--          </h3>-->
 
-          <div class="space-y-4">
-            <div class="flex items-center justify-between">
-              <div>
-                <div class="text-sm text-gray-400">Статус</div>
-                <div class="text-lg font-semibold {% if user_profile.subscription_active %}text-green-400{% else %}text-red-400{% endif %}">
-                  {{ user_profile.subscription_active|yesno:"Активна,Не активна" }}
-                </div>
-              </div>
+<!--          <div class="space-y-4">-->
+<!--            <div class="flex items-center justify-between">-->
+<!--              <div>-->
+<!--                <div class="text-sm text-gray-400">Статус</div>-->
+<!--                <div class="text-lg font-semibold {% if user_profile.subscription_active %}text-green-400{% else %}text-red-400{% endif %}">-->
+<!--                  {{ user_profile.subscription_active|yesno:"Активна,Не активна" }}-->
+<!--                </div>-->
+<!--              </div>-->
 
-              {% if not user_profile.subscription_active %}
-              <button onclick="showSubscribeModal()"
-                      class="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white px-4 py-2 rounded-lg font-semibold text-sm">
-                Оформить
-              </button>
-              {% endif %}
-            </div>
+<!--              {% if not user_profile.subscription_active %}-->
+<!--              <button onclick="showSubscribeModal()"-->
+<!--                      class="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white px-4 py-2 rounded-lg font-semibold text-sm">-->
+<!--                Оформить-->
+<!--              </button>-->
+<!--              {% endif %}-->
+<!--            </div>-->
 
-            <div>
-              <div class="text-sm text-gray-400">Доступ к видео</div>
-              <div class="text-lg font-semibold text-white">
-                {% if user_profile.subscription_active %}
-                Все премиум видео
-                {% else %}
-                Только бесплатные
-                {% endif %}
-              </div>
-            </div>
-          </div>
-        </div>
+<!--            <div>-->
+<!--              <div class="text-sm text-gray-400">Доступ к видео</div>-->
+<!--              <div class="text-lg font-semibold text-white">-->
+<!--                {% if user_profile.subscription_active %}-->
+<!--                Все премиум видео-->
+<!--                {% else %}-->
+<!--                Только бесплатные-->
+<!--                {% endif %}-->
+<!--              </div>-->
+<!--            </div>-->
+<!--          </div>-->
+<!--        </div>-->
       </div>
 
       <!-- Мои марафоны -->
