@@ -1,0 +1,52 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Редактирование профиля{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 py-12">
+    <div class="bg-gray-800 rounded-2xl p-8">
+        <h1 class="text-2xl font-bold text-white mb-6">Редактирование профиля</h1>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="mb-4 p-3 rounded-lg {% if message.tags == 'success' %}bg-green-900 text-green-300{% else %}bg-red-900 text-red-300{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="post" action="{% url 'edit_profile' %}">
+            {% csrf_token %}
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-gray-400 mb-2">ФИО *</label>
+                    <input type="text" name="full_name" value="{{ profile.full_name|default:'' }}" required
+                           class="w-full px-4 py-3 bg-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-600">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2">Телефон *</label>
+                    <input type="text" name="phone" value="{{ profile.phone|default:'' }}" required
+                           class="w-full px-4 py-3 bg-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-600"
+                           placeholder="+7 (999) 123-45-67">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2">Email (нельзя изменить)</label>
+                    <input type="email" value="{{ user.email }}" disabled
+                           class="w-full px-4 py-3 bg-gray-900 rounded-lg text-gray-400 cursor-not-allowed">
+                </div>
+            </div>
+
+            <div class="flex gap-4 mt-8">
+                <button type="submit"
+                        class="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-3 px-6 rounded-lg transition">
+                    Сохранить
+                </button>
+                <a href="{% url 'profile' %}"
+                   class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg transition">
+                    Отмена
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

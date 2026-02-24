@@ -3,6 +3,7 @@ from datetime import timedelta
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
+from django.urls import reverse
 
 from django.views.generic import DetailView
 from django.views.decorators.http import require_POST
@@ -11,15 +12,30 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404, render, redirect
 from django.http import HttpResponseForbidden, JsonResponse
 
+from django.db import transaction
+
+from .forms import ServiceRequestForm
+
 from .forms import VideoCommentForm
-from .models import Category, SeoBlock, Marathon, MarathonAccess, MarathonVideo, VideoComment, UserProfile, Video
+from .models import (Category,
+                     Marathon,
+                     MarathonAccess,
+                     MarathonVideo,
+                     VideoComment,
+                     UserProfile,
+                     Video,
+                     Service,
+                     ServiceRequest,
+                     )
 
 
 def home(request):
-    categories = Category.objects.all()
-
+    # categories = Category.objects.all()  # оставляем для других мест
+    services = Service.objects.filter(is_active=True).order_by('order')
     return render(request, 'core/home.html', {
-        'categories': categories,
+        'services': services,
+        # 'categories': categories, добавлен через контекстный процессор
+        # 'active_banners' и 'seo_blocks' добавлен через контекстный процессор
     })
 
 @login_required
@@ -427,4 +443,98 @@ def my_marathons(request):
     return render(request, 'core/my_marathons.html', {
         'marathon_accesses': marathon_accesses,
         'subscribed_marathons': subscribed_marathons,
+    })
+
+
+def service_detail(request, slug):
+    """Детальная страница услуги"""
+    service = get_object_or_404(Service, slug=slug, is_active=True)
+
+    # Если пользователь авторизован, предзаполняем форму данными из профиля
+    initial_data = {}
+    if request.user.is_authenticated:
+        try:
+            profile = UserProfile.objects.get(user=request.user)
+            initial_data = {
+                'full_name': profile.full_name,
+                'phone': profile.phone,
+                'email': request.user.email,
+            }
+        except UserProfile.DoesNotExist:
+            pass
+
+    form = ServiceRequestForm(initial=initial_data)
+
+    return render(request, 'core/service_detail.html', {
+        'service': service,
+        'form': form,
+    })
+
+
+@login_required
+@require_POST
+def service_request_submit(request, slug):
+    """Обработка отправки заявки"""
+    service = get_object_or_404(Service, slug=slug, is_active=True)
+
+    # Получаем или создаём профиль (на всякий случай)
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+
+    form = ServiceRequestForm(request.POST)
+    if form.is_valid():
+        # Создаём заявку
+        service_request = form.save(commit=False)
+        service_request.user = request.user
+        service_request.service = service
+        service_request.amount = service.price
+        service_request.status = 'new'
+        service_request.save()
+
+        # Обновляем профиль пользователя (если данные изменились)
+        profile.full_name = form.cleaned_data['full_name']
+        profile.phone = form.cleaned_data['phone']
+        profile.save()
+
+        # здесь можно добавить отправку email администратору
+        # send_mail(...)
+
+        messages.success(request, 'Заявка успешно отправлена! Администратор свяжется с вами.')
+        return redirect('service_detail', slug=service.slug)
+    else:
+        # Если форма не валидна, показываем страницу услуги с ошибками
+        return render(request, 'core/service_detail.html', {
+            'service': service,
+            'form': form,
+        })
+
+
+@login_required
+def my_service_requests(request):
+    """Список заявок пользователя (мои услуги)"""
+    requests = ServiceRequest.objects.filter(user=request.user).select_related('service').order_by('-created_at')
+    return render(request, 'core/my_service_requests.html', {
+        'requests': requests,
+    })
+
+
+# Добавим view для редактирования профиля
+@login_required
+def edit_profile(request):
+    """Редактирование профиля пользователя"""
+    profile, _ = UserProfile.objects.get_or_create(user=request.user)
+
+    if request.method == 'POST':
+        full_name = request.POST.get('full_name')
+        phone = request.POST.get('phone')
+        if full_name and phone:
+            profile.full_name = full_name
+            profile.phone = phone
+            profile.save()
+            messages.success(request, 'Профиль обновлён')
+            return redirect('profile')
+        else:
+            messages.error(request, 'Заполните все поля')
+
+    return render(request, 'core/edit_profile.html', {
+        'profile': profile,
     })

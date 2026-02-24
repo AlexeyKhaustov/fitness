@@ -2,8 +2,17 @@ from django.contrib import admin
 from django.utils import timezone
 from django.utils.html import format_html, format_html_join
 
-from .models import UserProfile, Video, Category, Banner, SeoBlock, MarathonAccess, Marathon, VideoComment, \
-    MarathonVideo
+from .models import (UserProfile,
+                     Video,
+                     Category,
+                     Banner,
+                     SeoBlock,
+                     MarathonAccess,
+                     Marathon,
+                     VideoComment,
+                     MarathonVideo,
+                     ServiceRequest,
+                     Service)
 
 
 @admin.register(UserProfile)
@@ -773,3 +782,73 @@ class VideoCommentAdmin(admin.ModelAdmin):
         }),
     )
     readonly_fields = ('created_at', 'updated_at', 'is_edited')
+
+
+@admin.register(Service)
+class ServiceAdmin(admin.ModelAdmin):
+    list_display = ['name', 'price', 'order', 'is_active', 'image_preview']
+    list_editable = ['order', 'is_active']
+    prepopulated_fields = {'slug': ('name',)}
+    search_fields = ['name', 'short_description', 'full_description']
+
+    fieldsets = (
+        ('Основное', {
+            'fields': ('name', 'slug', 'price', 'order', 'is_active')
+        }),
+        ('Описание', {
+            'fields': ('short_description', 'full_description')
+        }),
+        ('Визуальное оформление', {
+            'fields': ('image', 'icon', 'color'),
+            'description': 'Если загружена картинка, она будет использоваться вместо иконки'
+        }),
+    )
+
+    def image_preview(self, obj):
+        if obj.image:
+            return format_html('<img src="{}" style="max-height: 40px; max-width: 40px; border-radius: 5px;" />', obj.image.url)
+        return '—'
+    image_preview.short_description = 'Превью'
+
+
+@admin.register(ServiceRequest)
+class ServiceRequestAdmin(admin.ModelAdmin):
+    list_display = ('id', 'full_name', 'service', 'amount', 'status', 'created_at')
+    list_filter = ('status', 'service', 'created_at')
+    search_fields = ('full_name', 'email', 'phone')
+    list_editable = ('status',)
+    readonly_fields = ('created_at', 'updated_at')
+
+    fieldsets = (
+        ('Клиент', {
+            'fields': ('user', 'full_name', 'email', 'phone', 'additional_info')
+        }),
+        ('Услуга и оплата', {
+            'fields': ('service', 'amount', 'status', 'payment_id')
+        }),
+        ('Результат', {
+            'fields': ('result_file', 'result_text', 'result_url')
+        }),
+        ('Системное', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    actions = ['mark_as_processing', 'mark_as_invoice_sent', 'mark_as_paid', 'mark_as_completed']
+
+    def mark_as_processing(self, request, queryset):
+        queryset.update(status='processing')
+    mark_as_processing.short_description = "📋 В обработку"
+
+    def mark_as_invoice_sent(self, request, queryset):
+        queryset.update(status='invoice_sent')
+    mark_as_invoice_sent.short_description = "💰 Счёт выставлен"
+
+    def mark_as_paid(self, request, queryset):
+        queryset.update(status='paid')
+    mark_as_paid.short_description = "✅ Отметить оплаченными"
+
+    def mark_as_completed(self, request, queryset):
+        queryset.update(status='completed')
+    mark_as_completed.short_description = "🏁 Завершить"

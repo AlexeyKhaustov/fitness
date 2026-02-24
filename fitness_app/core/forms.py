@@ -115,3 +115,31 @@ class VideoLikeForm(forms.ModelForm):
         widgets = {
             'is_like': forms.HiddenInput()
         }
+
+
+from .models import ServiceRequest
+
+class ServiceRequestForm(forms.ModelForm):
+    """Форма заявки на услугу"""
+    class Meta:
+        model = ServiceRequest
+        fields = ['full_name', 'email', 'phone', 'additional_info']
+        widgets = {
+            'full_name': forms.TextInput(attrs={
+                'class': 'w-full px-4 py-3 bg-gray-700 rounded-lg',
+                'placeholder': 'Иванов Иван Иванович'
+            }),
+            'email': forms.EmailInput(attrs={
+                'class': 'w-full px-4 py-3 bg-gray-700 rounded-lg',
+                'placeholder': 'ivan@example.com'
+            }),
+            'phone': forms.TextInput(attrs={
+                'class': 'w-full px-4 py-3 bg-gray-700 rounded-lg',
+                'placeholder': '+7 (999) 123-45-67'
+            }),
+            'additional_info': forms.Textarea(attrs={
+                'class': 'w-full px-4 py-3 bg-gray-700 rounded-lg',
+                'rows': 4,
+                'placeholder': 'Расскажите о ваших целях, уровне подготовки, пожеланиях...'
+            }),
+        }

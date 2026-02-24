@@ -1,0 +1,115 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}{{ service.name }} - FitnessVideo{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 py-12">
+    <!-- Хлебные крошки -->
+    <nav class="mb-8 text-sm text-gray-400 flex items-center">
+        <a href="{% url 'home' %}" class="hover:text-purple-400 transition">Главная</a>
+        <i class="fa-solid fa-chevron-right mx-2 text-xs"></i>
+        <span class="text-white">{{ service.name }}</span>
+    </nav>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Левая колонка - информация об услуге -->
+        <div class="lg:col-span-2">
+            <div class="bg-gray-800 rounded-2xl p-8 mb-8">
+                <!-- Заголовок и цена -->
+                <div class="flex flex-wrap justify-between items-start mb-6">
+                    <h1 class="text-3xl md:text-4xl font-bold text-white mb-4 lg:mb-0">{{ service.name }}</h1>
+                    <div class="text-3xl font-bold text-green-400">{{ service.price }} ₽</div>
+                </div>
+
+                <!-- Изображение/иконка -->
+                <div class="mb-8 flex justify-center">
+                    {% if service.image %}
+                        <img src="{{ service.image.url }}"
+                             alt="{{ service.name }}"
+                             class="rounded-xl max-h-80 object-contain">
+                    {% else %}
+                        <div class="w-48 h-48 rounded-2xl flex items-center justify-center {{ service.color }}">
+                            <i class="fa-solid fa-{{ service.icon|default:'star' }} text-6xl text-white"></i>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Полное описание -->
+                {% if service.full_description %}
+                <div class="prose prose-invert max-w-none text-gray-300">
+                    {{ service.full_description|linebreaks }}
+                </div>
+                {% else %}
+                <p class="text-gray-400">Подробное описание услуги готовится.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Правая колонка - форма заявки -->
+        <div class="lg:col-span-1">
+            <div class="bg-gray-800 rounded-2xl p-6 sticky top-24">
+                <h2 class="text-xl font-bold text-white mb-6">Оставить заявку</h2>
+
+                {% if user.is_authenticated %}
+                    <form method="post" action="{% url 'service_request_submit' service.slug %}">
+                        {% csrf_token %}
+
+                        {% if messages %}
+                            {% for message in messages %}
+                                <div class="mb-4 p-3 rounded-lg {% if message.tags == 'success' %}bg-green-900 text-green-300{% else %}bg-red-900 text-red-300{% endif %}">
+                                    {{ message }}
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-gray-400 mb-2 text-sm">ФИО *</label>
+                                {{ form.full_name }}
+                            </div>
+                            <div>
+                                <label class="block text-gray-400 mb-2 text-sm">Email *</label>
+                                {{ form.email }}
+                            </div>
+                            <div>
+                                <label class="block text-gray-400 mb-2 text-sm">Телефон *</label>
+                                {{ form.phone }}
+                            </div>
+                            <div>
+                                <label class="block text-gray-400 mb-2 text-sm">Дополнительная информация</label>
+                                {{ form.additional_info }}
+                                <p class="text-gray-500 text-xs mt-1">Расскажите о целях, уровне подготовки, пожеланиях</p>
+                            </div>
+                        </div>
+
+                        <button type="submit"
+                                class="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-3 px-6 rounded-lg mt-6 transition-all hover:scale-105">
+                            Отправить заявку
+                        </button>
+
+                        <p class="text-gray-500 text-xs text-center mt-4">
+                            После отправки заявки администратор свяжется с вами для уточнения деталей и выставления счёта.
+                        </p>
+                    </form>
+                {% else %}
+                    <div class="text-center py-8">
+                        <i class="fa-solid fa-lock text-4xl text-gray-600 mb-4"></i>
+                        <p class="text-gray-400 mb-4">Чтобы оставить заявку, необходимо войти или зарегистрироваться</p>
+                        <div class="space-y-3">
+                            <button hx-get="/accounts/login/" hx-target="#modal-content" hx-swap="innerHTML"
+                                    class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition">
+                                Войти
+                            </button>
+                            <button hx-get="/accounts/signup/" hx-target="#modal-content" hx-swap="innerHTML"
+                                    class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg transition">
+                                Регистрация
+                            </button>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

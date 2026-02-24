@@ -25,4 +25,14 @@ urlpatterns = [
 
     # Внутренние страницы
     path('videos/', views.video_list, name='videos'),
+
+    # Услуги
+    path('services/<slug:slug>/', views.service_detail, name='service_detail'),
+    path('services/<slug:slug>/request/', views.service_request_submit, name='service_request_submit'),
+
+    # Мои заявки
+    path('my-services/', views.my_service_requests, name='my_service_requests'),
+
+    # Редактирование профиля
+    path('profile/edit/', views.edit_profile, name='edit_profile'),
 ]

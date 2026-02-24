@@ -578,3 +578,113 @@ class MarathonVideo(models.Model):
     def increment_views(self):
         self.views += 1
         self.save(update_fields=['views'])
+
+
+class Service(models.Model):
+    """Услуги (новый раздел)"""
+    name = models.CharField('Название услуги', max_length=100)
+    slug = models.SlugField('URL', max_length=100, unique=True)
+    image = models.ImageField(
+        'Картинка',
+        upload_to='services/%Y/%m/',
+        blank=True, null=True,
+        help_text='Рекомендуемый размер: 200×200px'
+    )
+    icon = models.CharField(
+        'Иконка (Font Awesome)',
+        max_length=50,
+        default='star',
+        help_text='Например: dumbbell, running, heart-pulse. Используется, если нет картинки'
+    )
+    color = models.CharField(
+        'Цвет градиента',
+        max_length=300,
+        default='bg-gradient-to-br from-purple-600 to-pink-600'
+    )
+    short_description = models.TextField(
+        'Краткое описание',
+        max_length=200,
+        blank=True,
+        help_text='Отображается на карточке'
+    )
+    full_description = models.TextField(
+        'Полное описание',
+        blank=True,
+        help_text='Подробное описание на странице услуги'
+    )
+    price = models.DecimalField('Стоимость', max_digits=10, decimal_places=0)
+    is_active = models.BooleanField('Активна', default=True)
+    order = models.IntegerField('Порядок вывода', default=0)
+
+    class Meta:
+        verbose_name = 'Услуга'
+        verbose_name_plural = 'Услуги'
+        ordering = ['order', 'name']
+
+    def __str__(self):
+        return self.name
+
+    def get_absolute_url(self):
+        return reverse('service_detail', args=[self.slug])
+
+
+class ServiceRequest(models.Model):
+    """Заявка на услугу"""
+    STATUS_CHOICES = [
+        ('new', 'Новая'),
+        ('processing', 'В обработке'),
+        ('invoice_sent', 'Счёт выставлен'),
+        ('paid', 'Оплачено'),
+        ('completed', 'Выполнено'),
+        ('cancelled', 'Отменено'),
+    ]
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='service_requests',
+        verbose_name='Пользователь'
+    )
+    service = models.ForeignKey(
+        Service,
+        on_delete=models.CASCADE,
+        related_name='requests',
+        verbose_name='Услуга'
+    )
+
+    # Контактные данные (копируются из профиля на момент заявки)
+    full_name = models.CharField('ФИО', max_length=100)
+    email = models.EmailField()
+    phone = models.CharField('Телефон', max_length=15)
+
+    # Дополнительная информация (простое текстовое поле)
+    additional_info = models.TextField(
+        'Дополнительная информация',
+        blank=True,
+        help_text='Цели, пожелания, уровень подготовки и т.д.'
+    )
+
+    # Статус и оплата
+    status = models.CharField('Статус', max_length=20, choices=STATUS_CHOICES, default='new')
+    amount = models.DecimalField('Сумма', max_digits=10, decimal_places=0)
+    payment_id = models.CharField('ID платежа', max_length=100, blank=True)
+
+    # Результат выполнения услуги (может быть заполнено несколько)
+    result_file = models.FileField(
+        'Файл с результатом',
+        upload_to='service_results/%Y/%m/',
+        blank=True
+    )
+    result_text = models.TextField('Текстовая информация', blank=True)
+    result_url = models.URLField('Ссылка на результат', blank=True)
+
+    created_at = models.DateTimeField('Дата заявки', auto_now_add=True)
+    updated_at = models.DateTimeField('Обновлено', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Заявка на услугу'
+        verbose_name_plural = 'Заявки на услуги'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Заявка #{self.id} – {self.full_name} – {self.service.name}"
