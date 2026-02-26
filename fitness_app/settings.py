@@ -152,12 +152,6 @@ ACCOUNT_LOGOUT_REDIRECT_URL = '/'
 ACCOUNT_LOGIN_ON_EMAIL_CONFIRMATION = True
 LOGIN_REDIRECT_URL = '/profile/'
 
-# allauth email verification settings
-ACCOUNT_EMAIL_REQUIRED = config('ACCOUNT_EMAIL_REQUIRED', default=True, cast=bool)
-ACCOUNT_EMAIL_VERIFICATION = config('ACCOUNT_EMAIL_VERIFICATION', default='optional')
-ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3
-
-
 # Безопасность
 # Важно: Django за обратным прокси с SSL
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
@@ -166,11 +160,11 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 if not DEBUG:
     # ПРОДАКШЕН: Nginx уже обработал SSL, не перенаправляем
     SECURE_SSL_REDIRECT = False
-    
+
     # Куки должны быть защищены (браузер использует HTTPS)
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
-    
+
     # Другие security настройки
     SECURE_BROWSER_XSS_FILTER = True
     SECURE_HSTS_SECONDS = 31536000
@@ -185,6 +179,10 @@ else:
 # Отладка CSRF кук (для разработки)
 CSRF_COOKIE_HTTPONLY = False
 
+# allauth email verification settings
+ACCOUNT_EMAIL_REQUIRED = config('ACCOUNT_EMAIL_REQUIRED', default=True, cast=bool)
+ACCOUNT_EMAIL_VERIFICATION = config('ACCOUNT_EMAIL_VERIFICATION', default='optional')
+ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 3
 
 # Email
 if DEBUG:

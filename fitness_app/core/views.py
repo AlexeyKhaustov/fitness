@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from decouple import config
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
@@ -12,7 +13,8 @@ from django.utils import timezone
 from django.shortcuts import get_object_or_404, render, redirect
 from django.http import HttpResponseForbidden, JsonResponse
 
-from django.db import transaction
+from django.conf import settings
+from django.core.mail import send_mail
 
 from .forms import ServiceRequestForm
 
@@ -477,9 +479,6 @@ def service_request_submit(request, slug):
     """Обработка отправки заявки"""
     service = get_object_or_404(Service, slug=slug, is_active=True)
 
-    # Получаем или создаём профиль (на всякий случай)
-    profile, _ = UserProfile.objects.get_or_create(user=request.user)
-
     form = ServiceRequestForm(request.POST)
     if form.is_valid():
         # Создаём заявку
@@ -490,18 +489,66 @@ def service_request_submit(request, slug):
         service_request.status = 'new'
         service_request.save()
 
-        # Обновляем профиль пользователя (если данные изменились)
-        profile.full_name = form.cleaned_data['full_name']
-        profile.phone = form.cleaned_data['phone']
-        profile.save()
+        # --- Уведомления ---
+        # получаем список email-адресов администраторов из переменной окружения
+        # Получаем список email-адресов администраторов
+        admin_emails_raw: str = config('ADMIN_EMAILS', default='')
+        admin_emails: list[str] = [email.strip() for email in admin_emails_raw.split(',') if email.strip()]
 
-        # здесь можно добавить отправку email администратору
-        # send_mail(...)
+        if admin_emails:
+            send_mail(
+                subject=f'Новая заявка #{service_request.id} на услугу "{service.name}"',
+                message=...,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=admin_emails,
+                fail_silently=True,
+            )
+        else:
+            # Опционально: можно залогировать предупреждение
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning('ADMIN_EMAILS не задан, письмо администратору не отправлено')
+
+        # Ссылка на заявку в админке
+        admin_link = request.build_absolute_uri(
+            reverse('admin:core_servicerequest_change', args=[service_request.id])
+        )
+
+        # Письмо администратору (каждому из списка)
+        send_mail(
+            subject=f'Новая заявка #{service_request.id} на услугу "{service.name}"',
+            message=(
+                f'Поступила новая заявка.\n\n'
+                f'Услуга: {service.name}\n'
+                f'Клиент: {service_request.full_name}\n'
+                f'Email: {service_request.email}\n'
+                f'Телефон: {service_request.phone}\n'
+                f'Дополнительная информация: {service_request.additional_info or "не указана"}\n\n'
+                f'Ссылка на заявку в админке: {admin_link}'
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=admin_emails,
+            fail_silently=True,
+        )
+
+        # Письмо пользователю
+        send_mail(
+            subject=f'Ваша заявка #{service_request.id} принята',
+            message=(
+                f'Здравствуйте, {service_request.full_name}!\n\n'
+                f'Ваша заявка на услугу "{service.name}" принята. Номер заявки: #{service_request.id}.\n'
+                f'Администратор свяжется с вами в ближайшее время для уточнения деталей и выставления счёта.\n\n'
+                f'С уважением, команда FitnessVideo'
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[service_request.email],
+            fail_silently=True,
+        )
+        # -------------------
 
         messages.success(request, 'Заявка успешно отправлена! Администратор свяжется с вами.')
         return redirect('service_detail', slug=service.slug)
     else:
-        # Если форма не валидна, показываем страницу услуги с ошибками
         return render(request, 'core/service_detail.html', {
             'service': service,
             'form': form,
