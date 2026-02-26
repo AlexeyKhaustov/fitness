@@ -1,0 +1,26 @@
+{% extends "account/base.html" %}
+{% load account %}
+
+{% block content %}
+<div class="text-center py-8">
+  <h2 class="text-3xl font-bold mb-6">Подтверждение email</h2>
+
+  {% if confirmation %}
+    <p class="text-gray-400 mb-8">
+      Пожалуйста, подтвердите, что <strong class="text-purple-400">{{ confirmation.email_address.email }}</strong> — это ваш email адрес.
+    </p>
+
+    <form method="post" action="{% url 'account_confirm_email' confirmation.key %}" class="space-y-4">
+      {% csrf_token %}
+      <button type="submit" class="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 py-3 rounded-lg font-bold">
+        Подтвердить
+      </button>
+    </form>
+  {% else %}
+    <p class="text-red-400 mb-8">Ссылка для подтверждения недействительна или устарела.</p>
+    <p class="text-gray-400">
+      <a href="{% url 'account_email' %}" class="text-purple-400 hover:underline">Запросить новое подтверждение</a>
+    </p>
+  {% endif %}
+</div>
+{% endblock %}

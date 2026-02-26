@@ -1,0 +1,14 @@
+{% extends "account/base.html" %}
+
+{% block content %}
+<div class="text-center py-12">
+  <h2 class="text-3xl font-bold mb-6">Проверьте почту</h2>
+  <p class="text-gray-400 mb-8">
+    Мы отправили вам письмо с подтверждением. Перейдите по указанной ссылке, чтобы завершить процесс регистрации.
+  </p>
+  <p class="text-gray-400">
+    Если письмо не пришло, проверьте папку "Спам" или
+    <a href="{% url 'account_email' %}" class="text-purple-400 hover:underline">запросите повторную отправку</a>.
+  </p>
+</div>
+{% endblock %}
