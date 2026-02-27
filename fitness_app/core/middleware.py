@@ -14,6 +14,7 @@ class ConsentMiddleware:
                 '/admin/',
                 '/static/',
                 '/media/',
+                '/profile/'
             ]
             # Проверяем, начинается ли текущий путь с одного из exempt_paths
             if not any(request.path.startswith(path) for path in exempt_paths):

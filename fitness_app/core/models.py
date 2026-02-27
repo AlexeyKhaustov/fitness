@@ -733,6 +733,14 @@ class DocumentVersion(models.Model):
     def save(self, *args, **kwargs):
         # Автоматически вычисляем хеш содержимого для отслеживания изменений
         self.content_hash = hashlib.sha256(self.text.encode('utf-8')).hexdigest()
+
+        if self.is_active:
+            # Исключаем текущую запись (если она уже существует)
+            DocumentVersion.objects.filter(
+                document=self.document,
+                is_active=True
+            ).exclude(pk=self.pk).update(is_active=False)
+
         super().save(*args, **kwargs)
 
     def __str__(self):
