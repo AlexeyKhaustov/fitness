@@ -80,6 +80,18 @@
       {% endif %}
     </div>
 
+      <!-- Чекбокс  -->
+      <div class="flex items-start mt-4">
+        <input type="checkbox" name="terms_accepted" id="terms_accepted" required
+               class="mt-1 mr-3 rounded bg-gray-700 border-gray-600 text-purple-600 focus:ring-purple-500">
+        <label for="terms_accepted" class="text-sm text-gray-300">
+            Я принимаю условия
+            <a href="{% url 'document_page' 'terms' %}" class="text-purple-400 hover:underline" target="_blank">Пользовательского соглашения</a>,
+            <a href="{% url 'document_page' 'privacy' %}" class="text-purple-400 hover:underline" target="_blank">Политики конфиденциальности</a>
+            и <a href="{% url 'document_page' 'offer' %}" class="text-purple-400 hover:underline" target="_blank">Договора оферты</a>.
+        </label>
+    </div>
+
     <!-- Кнопка отправки -->
     <button type="submit" class="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 py-3 rounded-lg font-bold mt-6 transition-all duration-300">
       Создать аккаунт

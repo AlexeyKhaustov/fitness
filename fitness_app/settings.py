@@ -69,6 +69,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
+    'fitness_app.core.middleware.ConsentMiddleware',
 ]
 
 ROOT_URLCONF = 'fitness_app.urls'

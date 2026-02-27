@@ -1,9 +1,15 @@
 from allauth.account.forms import SignupForm, LoginForm, ResetPasswordForm, ResetPasswordKeyForm
 from django import forms
-from .models import VideoComment
+from .models import VideoComment, DocumentVersion, UserConsent
 
 
 class CustomSignupForm(SignupForm):
+    terms_accepted = forms.BooleanField(
+        label='Я принимаю условия документов',
+        required=True,
+        error_messages={'required': 'Необходимо принять условия, чтобы зарегистрироваться.'}
+    )
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['username'].widget.attrs.update({
@@ -51,6 +57,20 @@ class CustomSignupForm(SignupForm):
         if isinstance(error, str):
             error = self._translate_error(error)
         super().add_error(field, error)
+
+
+    def save(self, request):
+        user = super().save(request)
+        # После сохранения пользователя фиксируем согласие на все активные версии
+        active_versions = DocumentVersion.objects.filter(is_active=True)
+        for version in active_versions:
+            UserConsent.objects.create(
+                user=user,
+                document_version=version,
+                ip_address=request.META.get('REMOTE_ADDR'),
+                user_agent=request.META.get('HTTP_USER_AGENT', '')
+            )
+        return user
 
 
 class CustomLoginForm(LoginForm):

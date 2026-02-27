@@ -28,7 +28,12 @@ from .models import (Category,
                      Video,
                      Service,
                      ServiceRequest,
+                     DocumentVersion,
+                     Document,
+                     UserConsent,
+                     UserSubscription,
                      )
+from .decorators import full_access_required
 
 
 def home(request):
@@ -40,10 +45,12 @@ def home(request):
         # 'active_banners' и 'seo_blocks' добавлен через контекстный процессор
     })
 
+
 @login_required
 def profile(request):
     user_profile, created = UserProfile.objects.get_or_create(user=request.user)
     return render(request, 'core/profile.html', {'user_profile': user_profile})
+
 
 @login_required
 def video_list(request):
@@ -135,6 +142,7 @@ class VideoDetailView(LoginRequiredMixin, DetailView):
         return context
 
 
+@full_access_required
 @login_required
 @require_POST
 def add_video_comment(request, video_id):
@@ -195,6 +203,7 @@ def get_comment_json(request, comment_id):
     })
 
 
+@full_access_required
 @login_required
 @require_POST
 def toggle_video_like(request, video_id):
@@ -372,6 +381,7 @@ def marathon_detail(request, slug):
     })
 
 
+@full_access_required
 @login_required
 def marathon_purchase(request, slug):
     """
@@ -473,6 +483,7 @@ def service_detail(request, slug):
     })
 
 
+@full_access_required
 @login_required
 @require_POST
 def service_request_submit(request, slug):
@@ -564,7 +575,7 @@ def my_service_requests(request):
     })
 
 
-# Добавим view для редактирования профиля
+@full_access_required
 @login_required
 def edit_profile(request):
     """Редактирование профиля пользователя"""
@@ -584,4 +595,76 @@ def edit_profile(request):
 
     return render(request, 'core/edit_profile.html', {
         'profile': profile,
+    })
+
+
+@login_required
+def accept_consent(request):
+    # Получаем все активные версии, на которые у пользователя ещё нет согласия
+    active_versions = DocumentVersion.objects.filter(is_active=True).select_related('document')
+    consented_version_ids = UserConsent.objects.filter(
+        user=request.user,
+        document_version__in=active_versions
+    ).values_list('document_version_id', flat=True)
+
+    pending_versions = [v for v in active_versions if v.id not in consented_version_ids]
+
+    if not pending_versions:
+        # Если нет ожидающих версий, просто редиректим
+        next_url = request.session.pop('next_url', '/')
+        return redirect(next_url)
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if action == 'accept':
+            # Сохраняем согласие для каждой новой версии
+            for version in pending_versions:
+                UserConsent.objects.create(
+                    user=request.user,
+                    document_version=version,
+                    ip_address=request.META.get('REMOTE_ADDR'),
+                    user_agent=request.META.get('HTTP_USER_AGENT', '')
+                )
+            # Убираем флаг ограниченного доступа, если он был
+            request.session.pop('restricted_access', None)
+            messages.success(request, 'Спасибо! Вы приняли обновлённые условия.')
+            next_url = request.session.pop('next_url', '/')
+            return redirect(next_url)
+        elif action == 'reject':
+            # Проверяем, есть ли у пользователя активные обязательства
+            has_active_obligations = (
+                MarathonAccess.objects.filter(user=request.user, is_active=True).exists() or
+                UserSubscription.objects.filter(user=request.user, is_active=True).exists()
+            )
+            if has_active_obligations:
+                # Переводим в ограниченный режим
+                request.session['restricted_access'] = True
+                messages.warning(request, 'Вы отказались от новых условий. Доступ ограничен только ранее приобретённым материалам.')
+                return redirect('profile')  # или на главную
+            else:
+                # Разлогиниваем
+                from django.contrib.auth import logout
+                logout(request)
+                messages.info(request, 'Вы отказались от новых условий и были разлогинены.')
+                return redirect('home')
+        else:
+            messages.error(request, 'Неверное действие.')
+
+    context = {
+        'pending_versions': pending_versions,
+    }
+    return render(request, 'core/accept_consent.html', context)
+
+
+def document_page(request, doc_type):
+    doc = get_object_or_404(Document, type=doc_type)
+    version = doc.current_version
+    if not version:
+        # Если нет версии, показываем заглушку
+        return render(request, 'core/document_page.html', {'title': doc.get_type_display(), 'text': 'Документ готовится.'})
+    return render(request, 'core/document_page.html', {
+        'title': doc.get_type_display(),
+        'text': version.text,
+        'version_date': version.created_at,
+        'version_number': version.version_number
     })

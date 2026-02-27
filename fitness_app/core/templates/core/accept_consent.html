@@ -1,0 +1,49 @@
+{% extends 'core/base.html' %}
+
+{% block title %}Обновление условий{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-12">
+    <div class="bg-gray-800 rounded-2xl p-8">
+        <h1 class="text-3xl font-bold text-white mb-6">Обновление документов</h1>
+
+        <p class="text-gray-300 mb-6">
+            Мы обновили следующие документы. Пожалуйста, ознакомьтесь с изменениями и примите новые условия для продолжения работы с сайтом.
+        </p>
+
+        <div class="space-y-6 mb-8">
+            {% for version in pending_versions %}
+            <div class="bg-gray-900 rounded-xl p-6">
+                <h2 class="text-xl font-bold text-purple-400 mb-3">{{ version.document.get_type_display }} (версия {{ version.version_number }} от {{ version.created_at|date:"d.m.Y" }})</h2>
+                <div class="prose prose-invert max-w-none max-h-96 overflow-y-auto border border-gray-700 rounded-lg p-4">
+                    {{ version.text|linebreaks }}
+                </div>
+                <p class="text-gray-500 text-sm mt-3">
+                    <i class="fa-regular fa-clock mr-1"></i> Дата вступления в силу: {{ version.created_at|date:"d.m.Y" }}
+                </p>
+            </div>
+            {% endfor %}
+        </div>
+
+        <form method="post" class="flex flex-col sm:flex-row gap-4 justify-center">
+            {% csrf_token %}
+            <button type="submit" name="action" value="accept"
+                    class="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700
+                           text-white font-bold py-3 px-8 rounded-lg transition-all hover:scale-105">
+                <i class="fa-solid fa-check mr-2"></i>
+                Принимаю новые условия
+            </button>
+            <button type="submit" name="action" value="reject"
+                    class="bg-gray-700 hover:bg-gray-600 text-white font-bold py-3 px-8 rounded-lg transition-all">
+                <i class="fa-solid fa-times mr-2"></i>
+                Не принимаю
+            </button>
+        </form>
+
+        <p class="text-gray-500 text-sm text-center mt-6">
+            Если вы не примете новые условия, доступ к функциям сайта будет ограничен (вы сможете просматривать только ранее приобретённый контент).<br>
+            В случае отказа при отсутствии активных покупок вы будете разлогинены.
+        </p>
+    </div>
+</div>
+{% endblock %}

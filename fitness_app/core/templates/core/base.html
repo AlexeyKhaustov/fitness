@@ -1017,6 +1017,22 @@
     </div>
   </header>
 
+  <!-- Уведомление об ограниченном доступе -->
+{% if user.is_authenticated and request.session.restricted_access %}
+    <div class="bg-yellow-600 text-white text-center py-3 px-4 sticky top-0 z-40 shadow-lg">
+        <div class="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center">
+                <i class="fa-solid fa-exclamation-triangle mr-3 text-xl"></i>
+                <span>Ваш доступ ограничен. Примите новые условия, чтобы продолжить пользоваться всеми функциями.</span>
+            </div>
+            <a href="{% url 'accept_consent' %}"
+               class="bg-white text-yellow-700 hover:bg-gray-100 font-semibold px-4 py-2 rounded-lg text-sm transition">
+                Перейти к обновлению
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
   <!-- Основной контент -->
   <main class="flex-1">
     {% block content %}{% endblock %}
@@ -1036,6 +1052,16 @@
             Профессиональные программы, марафоны и индивидуальный подход.
           </p>
         </div>
+
+       <!-- Документы-->
+      <div class="mt-6">
+            <h3 class="text-lg font-bold text-white mb-4">Документы</h3>
+            <ul class="space-y-2 text-gray-400">
+                <li><a href="{% url 'document_page' 'privacy' %}" class="hover:text-purple-400">Политика конфиденциальности</a></li>
+                <li><a href="{% url 'document_page' 'terms' %}" class="hover:text-purple-400">Пользовательское соглашение</a></li>
+                <li><a href="{% url 'document_page' 'offer' %}" class="hover:text-purple-400">Договор оферты</a></li>
+            </ul>
+      </div>
 
         <!-- Навигация -->
         <div>
@@ -1068,14 +1094,14 @@
           </ul>
 
           <!-- Кнопка подписки в футере (только если нет подписки) -->
-          {% if user.is_authenticated and not user_profile.subscription_active %}
-          <div class="mt-6">
-            <a href="{% url 'profile' %}"
-               class="inline-block bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">
-              Оформить подписку
-            </a>
-          </div>
-          {% endif %}
+<!--          {% if user.is_authenticated and not user_profile.subscription_active %}-->
+<!--          <div class="mt-6">-->
+<!--            <a href="{% url 'profile' %}"-->
+<!--               class="inline-block bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white px-4 py-2 rounded-lg text-sm font-semibold">-->
+<!--              Оформить подписку-->
+<!--            </a>-->
+<!--          </div>-->
+<!--          {% endif %}-->
         </div>
       </div>
 
@@ -1086,7 +1112,7 @@
     </div>
   </footer>
 
-  <!-- Модальные окна (остаются как были) -->
+  <!-- Модальные окна -->
   <div id="modal" class="fixed inset-0 z-50 items-center justify-center hidden">
     <div class="fixed inset-0 bg-black bg-opacity-70" onclick="closeModal()"></div>
     <div class="relative bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full mx-4 p-8" id="modal-content">

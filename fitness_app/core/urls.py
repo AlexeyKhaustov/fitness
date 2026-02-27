@@ -1,5 +1,7 @@
+from django.contrib.admin.views.decorators import staff_member_required
 from django.urls import path
 from . import views
+from . import admin_views
 
 urlpatterns = [
     # Основные страницы
@@ -35,4 +37,9 @@ urlpatterns = [
 
     # Редактирование профиля
     path('profile/edit/', views.edit_profile, name='edit_profile'),
+
+    # Заглушка если нет версии документа
+    path('doc/<slug:doc_type>/', views.document_page, name='document_page'),
+
+    path('accept-consent/', views.accept_consent, name='accept_consent'),
 ]

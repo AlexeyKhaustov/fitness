@@ -1,3 +1,5 @@
+import hashlib
+
 from django.db import models
 from django.contrib.auth.models import User
 from django.urls import reverse
@@ -688,3 +690,66 @@ class ServiceRequest(models.Model):
 
     def __str__(self):
         return f"Заявка #{self.id} – {self.full_name} – {self.service.name}"
+
+
+class Document(models.Model):
+    TYPE_CHOICES = [
+        ('privacy', 'Политика конфиденциальности'),
+        ('terms', 'Пользовательское соглашение'),
+        ('offer', 'Договор оферты'),
+    ]
+    type = models.CharField('Тип документа', max_length=20, choices=TYPE_CHOICES, unique=True)
+    current_version = models.ForeignKey(
+        'DocumentVersion',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='+',
+        verbose_name='Текущая версия'
+    )
+
+    class Meta:
+        verbose_name = 'Документ'
+        verbose_name_plural = 'Документы'
+
+    def __str__(self):
+        return self.get_type_display()
+
+
+class DocumentVersion(models.Model):
+    document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name='versions', verbose_name='Документ')
+    version_number = models.PositiveIntegerField('Номер версии')
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    content_hash = models.CharField('Хеш содержимого', max_length=64, editable=False)
+    text = models.TextField('Текст документа')
+    is_active = models.BooleanField('Активна', default=False)
+
+    class Meta:
+        unique_together = ('document', 'version_number')
+        ordering = ['-version_number']
+        verbose_name = 'Версия документа'
+        verbose_name_plural = 'Версии документов'
+
+    def save(self, *args, **kwargs):
+        # Автоматически вычисляем хеш содержимого для отслеживания изменений
+        self.content_hash = hashlib.sha256(self.text.encode('utf-8')).hexdigest()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.document.get_type_display()} v{self.version_number} от {self.created_at.strftime("%d.%m.%Y")}'
+
+
+class UserConsent(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='consents', verbose_name='Пользователь')
+    document_version = models.ForeignKey(DocumentVersion, on_delete=models.CASCADE, verbose_name='Версия документа')
+    consented_at = models.DateTimeField('Дата согласия', auto_now_add=True)
+    ip_address = models.GenericIPAddressField('IP-адрес')
+    user_agent = models.TextField('User-Agent')
+
+    class Meta:
+        unique_together = ('user', 'document_version')
+        verbose_name = 'Согласие пользователя'
+        verbose_name_plural = 'Согласия пользователей'
+
+    def __str__(self):
+        return f'{self.user.username} – {self.document_version}'

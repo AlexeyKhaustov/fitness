@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.utils import timezone
-from django.utils.html import format_html, format_html_join
+from django.utils.html import format_html
+from django.urls import reverse
 
 from .models import (UserProfile,
                      Video,
@@ -12,7 +13,11 @@ from .models import (UserProfile,
                      VideoComment,
                      MarathonVideo,
                      ServiceRequest,
-                     Service)
+                     Service,
+                     Document,
+                     DocumentVersion,
+                     UserConsent,
+                     )
 
 
 @admin.register(UserProfile)
@@ -48,11 +53,6 @@ class VideoAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-
-
-# admin.py - полностью исправленная версия
-from django.utils.html import format_html, mark_safe
-from django.contrib import admin
 
 
 @admin.register(Category)
@@ -852,3 +852,67 @@ class ServiceRequestAdmin(admin.ModelAdmin):
     def mark_as_completed(self, request, queryset):
         queryset.update(status='completed')
     mark_as_completed.short_description = "🏁 Завершить"
+
+
+class DocumentVersionInline(admin.TabularInline):
+    model = DocumentVersion
+    extra = 0
+    fields = ['version_number', 'created_at', 'is_active', 'text']
+    readonly_fields = ['created_at', 'version_number']
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        # Добавлять версии можно только через отдельную кнопку (действие)
+        return False
+
+
+@admin.register(Document)
+class DocumentAdmin(admin.ModelAdmin):
+    list_display = ['type', 'current_version_link', 'create_new_version_button']
+    inlines = [DocumentVersionInline]
+
+    def current_version_link(self, obj):
+        if obj.current_version:
+            return format_html('<a href="{}">Версия {}</a>',
+                               reverse('admin:core_documentversion_change', args=[obj.current_version.id]),
+                               obj.current_version.version_number)
+        return '—'
+
+    current_version_link.short_description = 'Текущая версия'
+
+    def create_new_version_button(self, obj):
+        return format_html('<a class="button" href="{}">➕ Создать новую версию</a>',
+                           reverse('create_document_version', args=[obj.id]))
+
+    create_new_version_button.short_description = 'Действие'
+
+
+@admin.register(DocumentVersion)
+class DocumentVersionAdmin(admin.ModelAdmin):
+    list_display = ['document', 'version_number', 'created_at', 'is_active', 'set_active_button']
+    list_filter = ['document', 'is_active']
+    readonly_fields = ['content_hash', 'created_at']
+    fields = ['document', 'version_number', 'text', 'is_active', 'created_at', 'content_hash']
+
+    def set_active_button(self, obj):
+        if not obj.is_active:
+            return format_html('<a class="button" href="{}">Сделать активной</a>',
+                               reverse('set_active_version', args=[obj.id]))
+        return '✓ Активна'
+
+    set_active_button.short_description = ''
+
+    def save_model(self, request, obj, form, change):
+        if not obj.pk:
+            # Новая версия: увеличиваем номер
+            last_version = DocumentVersion.objects.filter(document=obj.document).order_by('-version_number').first()
+            obj.version_number = (last_version.version_number + 1) if last_version else 1
+        super().save_model(request, obj, form, change)
+
+
+@admin.register(UserConsent)
+class UserConsentAdmin(admin.ModelAdmin):
+    list_display = ['user', 'document_version', 'consented_at', 'ip_address']
+    list_filter = ['document_version__document', 'consented_at']
+    search_fields = ['user__username', 'user__email']
+    readonly_fields = ['consented_at', 'ip_address', 'user_agent']
