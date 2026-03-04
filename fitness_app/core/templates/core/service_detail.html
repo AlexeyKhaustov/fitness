@@ -5,22 +5,23 @@
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 py-12">
-    <!-- Хлебные крошки -->
+    <!-- Хлебные крошки (с усечением на мобильных) -->
     <nav class="mb-8 text-sm text-gray-400 flex items-center">
-        <a href="{% url 'home' %}" class="hover:text-purple-400 transition">Главная</a>
-        <i class="fa-solid fa-chevron-right mx-2 text-xs"></i>
-        <span class="text-white">{{ service.name }}</span>
+        <a href="{% url 'home' %}" class="hover:text-purple-400 transition whitespace-nowrap">Главная</a>
+        <i class="fa-solid fa-chevron-right mx-2 text-xs flex-shrink-0"></i>
+        <span class="text-white truncate max-w-[150px] md:max-w-none" title="{{ service.name }}">
+            {{ service.name }}
+        </span>
     </nav>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <!-- Левая колонка - информация об услуге -->
         <div class="lg:col-span-2">
             <div class="bg-gray-800 rounded-2xl p-8 mb-8">
-                <!-- Заголовок и цена -->
-                <div class="flex flex-wrap justify-between items-start mb-6">
-                    <h1 class="text-3xl md:text-4xl font-bold text-white mb-4 lg:mb-0">{{ service.name }}</h1>
-                    <div class="text-3xl font-bold text-green-400">{{ service.price }} ₽</div>
-                </div>
+                <!-- Заголовок услуги (скрыт на мобильных, показывается на десктопе) -->
+                <h1 class="hidden md:block text-3xl md:text-4xl font-bold text-white mb-6">
+                    {{ service.name }}
+                </h1>
 
                 <!-- Изображение/иконка -->
                 <div class="mb-8 flex justify-center">
@@ -43,6 +44,12 @@
                 {% else %}
                 <p class="text-gray-400">Подробное описание услуги готовится.</p>
                 {% endif %}
+
+                <!-- Цена (перенесена под описание) -->
+                <div class="mt-8 flex items-center justify-between border-t border-gray-700 pt-6">
+                    <span class="text-gray-400 text-lg">Стоимость услуги</span>
+                    <div class="text-4xl font-bold text-green-400">{{ service.price }} ₽</div>
+                </div>
             </div>
         </div>
 

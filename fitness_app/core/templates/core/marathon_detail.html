@@ -136,7 +136,7 @@
                         <button onclick="buyMarathon('{{ marathon.slug }}')"
                                 class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-4 px-6 rounded-lg text-lg transition-all hover:scale-105">
                             <i class="fa-solid fa-cart-shopping mr-2"></i>
-                            Купить марафон за {{ marathon.price }}
+                            Купить
                         </button>
                     {% else %}
                         <!-- Марафон куплен -->
@@ -222,21 +222,21 @@
     <!-- Эксклюзивные видео марафона -->
         <div id="marathon-videos" class="mt-12">
             <!-- Заголовок с адаптивным расположением -->
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-                <h2 class="text-xl md:text-2xl font-bold text-white">
+            <div class="flex flex-col sm:flex-row sm:items-center flex-wrap gap-3 mb-6">
+                <h2 class="text-xl md:text-2xl font-bold text-white flex flex-wrap items-center gap-2">
                     Программа марафона
-                    <span class="block sm:inline text-base sm:text-lg {% if has_access %}text-green-400{% else %}text-red-400{% endif %} sm:ml-2">
+                    <span class="text-base sm:text-lg {% if has_access %}text-green-400{% else %}text-red-400{% endif %}">
                         ({{ marathon_videos_count }} эксклюзивных видео)
                     </span>
                 </h2>
 
                 {% if has_access %}
-                <div class="flex items-center text-green-400 font-semibold bg-green-900/20 px-3 py-1.5 rounded-full w-fit">
+                <div class="flex items-center text-green-400 font-semibold bg-green-900/20 px-3 py-1.5 rounded-full">
                     <i class="fa-solid fa-check mr-1"></i>
                     <span>Полный доступ</span>
                 </div>
                 {% else %}
-                <div class="flex items-center text-red-400 font-semibold bg-red-900/20 px-3 py-1.5 rounded-full w-fit">
+                <div class="flex items-center text-red-400 font-semibold bg-red-900/20 px-3 py-1.5 rounded-full">
                     <i class="fa-solid fa-lock mr-1"></i>
                     <span>Требуется покупка</span>
                 </div>
@@ -293,7 +293,7 @@
             <div class="opacity-40">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {% for i in "123456"|make_list %}
-                    <div class="bg-gray-900 rounded-xl overflow-hidden">
+                    <div class="bg-gray-900 rounded-xl overflow-hidden {% if forloop.counter > 2 %}hidden lg:block{% endif %}">
                         <div class="h-48 bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center">
                             <i class="fa-solid fa-lock text-4xl text-gray-700"></i>
                         </div>
@@ -317,7 +317,7 @@
 
                     <button onclick="buyMarathon('{{ marathon.slug }}')"
                             class="w-full bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-bold py-3 px-6 rounded-lg transition-all hover:scale-105 mb-4">
-                        Купить за {{ marathon.price }}
+                        Купить
                     </button>
 
                 </div>
