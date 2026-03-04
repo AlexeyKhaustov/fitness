@@ -49,6 +49,12 @@ class Category(models.Model):
         help_text='Теги через запятую (например: для начинающих, дома, без инвентаря). Отображаются на планшетах и ПК.'
     )
 
+    is_visible  =  models . BooleanField (
+        'Отображать на сайте' ,
+        default = True ,
+        help_text = 'Если выключено, категория не будет показываться в меню и на главной, но останется доступна по прямой ссылке.'
+    )
+
     class Meta:
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'

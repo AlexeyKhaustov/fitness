@@ -57,11 +57,9 @@ class VideoAdmin(admin.ModelAdmin):
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    # ИСПРАВЛЕНО: добавили icon и color в list_display
-    list_display = ['name', 'slug', 'icon', 'color', 'has_image_display', 'is_featured', 'videos_count',
-                    'image_preview']
-    list_editable = ['icon', 'color', 'is_featured']  # теперь работает, т.к. поля есть в list_display
-    list_filter = ['is_featured']
+    list_display = ['name', 'slug', 'icon', 'color', 'has_image_display', 'is_featured', 'is_visible', 'videos_count']
+    list_editable = ['icon', 'color', 'is_featured', 'is_visible']
+    list_filter = ['is_featured', 'is_visible']
     prepopulated_fields = {'slug': ('name',)}
     search_fields = ['name', 'description', 'tags']
 
@@ -89,7 +87,7 @@ class CategoryAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Основная информация', {
-            'fields': ('name', 'slug', 'color', 'description', 'is_featured'),
+            'fields': ('name', 'slug', 'color', 'description', 'is_featured', 'is_visible'),
             'description': 'Основные настройки категории'
         }),
         ('Визуальное оформление', {

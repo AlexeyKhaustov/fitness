@@ -89,10 +89,9 @@ def user_marathon_access(request):
 
 
 def categories_processor(request):
-    """Добавляет все категории в контекст всех шаблонов с сортировкой"""
+    """Добавляет все видимые категории в контекст всех шаблонов с сортировкой"""
     try:
-        # Сортируем: сначала рекомендуемые, потом по имени
-        categories = Category.objects.all().order_by('-is_featured', 'name')
+        categories = Category.objects.filter(is_visible=True).order_by('-is_featured', 'name')
         return {'categories': categories}
     except Exception as e:
         print(f"Ошибка при получении категорий: {e}")
