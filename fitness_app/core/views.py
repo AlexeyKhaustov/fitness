@@ -506,10 +506,23 @@ def service_request_submit(request, slug):
         admin_emails_raw: str = config('ADMIN_EMAILS', default='')
         admin_emails: list[str] = [email.strip() for email in admin_emails_raw.split(',') if email.strip()]
 
+        # Ссылка на заявку в админке
+        admin_link = request.build_absolute_uri(
+            reverse('admin:core_servicerequest_change', args=[service_request.id])
+        )
+
         if admin_emails:
             send_mail(
                 subject=f'Новая заявка #{service_request.id} на услугу "{service.name}"',
-                message=...,
+                message=(
+                    f'Поступила новая заявка.\n\n'
+                    f'Услуга: {service.name}\n'
+                    f'Клиент: {service_request.full_name}\n'
+                    f'Email: {service_request.email}\n'
+                    f'Телефон: {service_request.phone}\n'
+                    f'Дополнительная информация: {service_request.additional_info or "не указана"}\n\n'
+                    f'Ссылка на заявку в админке: {admin_link}'
+                ),
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=admin_emails,
                 fail_silently=True,
@@ -519,11 +532,6 @@ def service_request_submit(request, slug):
             import logging
             logger = logging.getLogger(__name__)
             logger.warning('ADMIN_EMAILS не задан, письмо администратору не отправлено')
-
-        # Ссылка на заявку в админке
-        admin_link = request.build_absolute_uri(
-            reverse('admin:core_servicerequest_change', args=[service_request.id])
-        )
 
         # Письмо администратору (каждому из списка)
         send_mail(
