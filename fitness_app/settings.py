@@ -199,6 +199,21 @@ else:
     DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
 
 
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}
+
+
 class CustomAdminConfig:
     CSS_URLS = [
         'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css',
