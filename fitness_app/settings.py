@@ -1,5 +1,5 @@
-import os
 from pathlib import Path
+
 from decouple import config
 from django.contrib.messages import constants as messages
 
@@ -198,7 +198,6 @@ else:
     EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
     DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
 
-
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -211,8 +210,14 @@ LOGGING = {
         'handlers': ['console'],
         'level': 'INFO',
     },
+    'loggers': {
+        'django.security.DisallowedHost': {
+            'handlers': [],
+            'level': 'CRITICAL',
+            'propagate': False,
+        },
+    },
 }
-
 
 class CustomAdminConfig:
     CSS_URLS = [
