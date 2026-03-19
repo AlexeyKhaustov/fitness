@@ -11,6 +11,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
+RUN mkdir -p /var/log/django
+
 # Создаем директории для кастомных файлов
 RUN mkdir -p /app/staticfiles/admin/css /app/staticfiles/admin/js
 

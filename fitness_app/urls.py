@@ -7,6 +7,8 @@ from django.contrib.admin.views.decorators import staff_member_required
 from fitness_app.core import admin_views
 
 urlpatterns = [
+    path('', include('django_prometheus.urls')),
+
     # Админские экшены для документов
     path('admin/create-document-version/<int:doc_id>/',
          staff_member_required(admin_views.create_document_version),

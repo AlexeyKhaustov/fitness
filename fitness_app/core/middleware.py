@@ -1,3 +1,6 @@
+import logging
+import time
+
 from django.shortcuts import redirect
 from .models import DocumentVersion, UserConsent
 
@@ -31,3 +34,22 @@ class ConsentMiddleware:
             document_version__in=active_versions
         ).values_list('document_version_id', flat=True)
         return set(active_versions.values_list('id', flat=True)) == set(consented_version_ids)
+
+
+class RequestLogMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+        print("=== MIDDLEWARE INIT ===")  # временно
+
+    def __call__(self, request):
+        print(f"=== MIDDLEWARE CALL for {request.path} ===")  # временно
+        start_time = time.time()
+        response = self.get_response(request)
+        duration = time.time() - start_time
+
+        logger = logging.getLogger('django.request')
+        logger.info(
+            f'HTTP {request.method} {request.path} - {response.status_code} '
+            f'({duration:.2f}s)'
+        )
+        return response
