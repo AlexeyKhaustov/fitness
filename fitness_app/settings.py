@@ -9,7 +9,7 @@ from django.contrib.messages import constants as messages
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Безопасность
-SECRET_KEY = config('DJANGO_SECRET_KEY')
+SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-default-key-for-build-only')
 DEBUG = config('DJANGO_DEBUG', default=True, cast=bool)
 
 # ALLOWED_HOSTS берется из переменной окружения
