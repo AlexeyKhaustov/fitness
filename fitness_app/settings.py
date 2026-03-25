@@ -268,5 +268,5 @@ class CustomAdminConfig:
     ]
 
 # Настройки ЮKassa
-YOOKASSA_SHOP_ID = config('YOOKASSA_SHOP_ID')
-YOOKASSA_SECRET_KEY = config('YOOKASSA_SECRET_KEY')
+YOOKASSA_SHOP_ID = config('YOOKASSA_SHOP_ID', default='')
+YOOKASSA_SECRET_KEY = config('YOOKASSA_SECRET_KEY', default='')
