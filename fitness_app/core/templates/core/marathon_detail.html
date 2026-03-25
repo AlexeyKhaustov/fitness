@@ -340,35 +340,16 @@ function buyMarathon(slug) {
         return;
     }
 
-    const button = event.target;
-    const originalText = button.innerHTML;
-    button.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Обработка...';
-    button.disabled = true;
-
-    fetch(`/marathon/${slug}/purchase/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': '{{ csrf_token }}',
-            'Content-Type': 'application/json',
-        },
-    })
-    .then(response => {
-        if (response.redirected) {
-            window.location.href = response.url;
-        } else if (response.ok) {
-            location.reload();
-        } else {
-            alert('Ошибка при покупке. Попробуйте еще раз.');
-            button.innerHTML = originalText;
-            button.disabled = false;
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Ошибка соединения. Попробуйте еще раз.');
-        button.innerHTML = originalText;
-        button.disabled = false;
-    });
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = `/marathon/${slug}/purchase/`;
+    var csrf = document.createElement('input');
+    csrf.type = 'hidden';
+    csrf.name = 'csrfmiddlewaretoken';
+    csrf.value = '{{ csrf_token }}';
+    form.appendChild(csrf);
+    document.body.appendChild(form);
+    form.submit();
 }
 </script>
 

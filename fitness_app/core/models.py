@@ -767,3 +767,36 @@ class UserConsent(models.Model):
 
     def __str__(self):
         return f'{self.user.username} – {self.document_version}'
+
+
+class Payment(models.Model):
+    """Модель для отслеживания статуса платежа."""
+    STATUS_CHOICES = [
+        ('pending', 'Ожидает оплаты'),
+        ('succeeded', 'Успешно'),
+        ('canceled', 'Отменён'),
+        ('failed', 'Ошибка'),
+    ]
+
+    user = models.ForeignKey(
+        'auth.User', on_delete=models.CASCADE,
+        related_name='payments', verbose_name='Пользователь'
+    )
+    marathon = models.ForeignKey(
+        Marathon, on_delete=models.CASCADE,
+        related_name='payments', verbose_name='Марафон'
+    )
+    amount = models.DecimalField('Сумма', max_digits=10, decimal_places=0)
+    payment_id = models.CharField('ID платежа в ЮКасса', max_length=100, unique=True, blank=True, null=True)
+    status = models.CharField('Статус', max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+    confirmation_url = models.URLField('Ссылка на оплату', max_length=500, blank=True, null=True)
+
+    class Meta:
+        verbose_name = 'Платёж'
+        verbose_name_plural = 'Платежи'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'Платёж #{self.id} ({self.user.username} - {self.marathon.title})'

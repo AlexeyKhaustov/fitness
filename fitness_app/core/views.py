@@ -1,6 +1,8 @@
-from datetime import timedelta
-
+import uuid
+import logging
+import json
 from decouple import config
+
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
@@ -9,16 +11,15 @@ from django.urls import reverse
 from django.views.generic import DetailView
 from django.views.decorators.http import require_POST
 
-from django.utils import timezone
-from django.shortcuts import get_object_or_404, render, redirect
-from django.http import HttpResponseForbidden, JsonResponse
+from django.shortcuts import render, get_object_or_404, redirect
+from django.http import HttpResponseForbidden, JsonResponse, HttpResponseBadRequest, HttpResponse
 
+from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.core.mail import send_mail
 
-from .forms import ServiceRequestForm
-
-from .forms import VideoCommentForm
+from .decorators import full_access_required
+from .forms import VideoCommentForm, ServiceRequestForm
 from .models import (Category,
                      Marathon,
                      MarathonAccess,
@@ -32,8 +33,18 @@ from .models import (Category,
                      Document,
                      UserConsent,
                      UserSubscription,
+                     Payment,
                      )
-from .decorators import full_access_required
+
+from yookassa import Configuration, Payment as YooPayment
+from yookassa.domain.exceptions import BadRequestError, UnauthorizedError
+
+logger = logging.getLogger(__name__)
+
+# Настройка ЮKassa (ключи из .env)
+Configuration.account_id = settings.YOOKASSA_SHOP_ID
+Configuration.secret_key = settings.YOOKASSA_SECRET_KEY
+
 
 
 def home(request):
@@ -327,23 +338,16 @@ def marathon_list(request):
 
 
 def marathon_detail(request, slug):
-    """
-    Детальная страница марафона с разделением на тизерные и эксклюзивные видео
-    """
     marathon = get_object_or_404(
         Marathon.objects.prefetch_related(
-            'teaser_videos',
-            'teaser_videos__categories',
-            'marathon_videos'
+            'teaser_videos', 'teaser_videos__categories', 'marathon_videos'
         ),
         slug=slug,
         is_active=True
     )
 
-    # Проверяем доступ пользователя (ТОЛЬКО покупка марафона)
     has_access = False
     access_obj = None
-
     if request.user.is_authenticated:
         access_obj = MarathonAccess.objects.filter(
             user=request.user,
@@ -352,27 +356,97 @@ def marathon_detail(request, slug):
         ).first()
         has_access = access_obj and access_obj.is_valid()
 
-    # Тизерные видео (бесплатные для всех)
-    teaser_videos = marathon.teaser_videos.filter(is_free=True).order_by('created_at')[:6]
+    # Если доступа нет, проверяем наличие pending-платежа и его статус в ЮKassa
+    if not has_access and request.user.is_authenticated:
+        pending_payment = Payment.objects.filter(
+            user=request.user,
+            marathon=marathon,
+            status='pending'
+        ).first()
+        if pending_payment and pending_payment.payment_id:
+            try:
+                yoo_payment = YooPayment.find_one(pending_payment.payment_id)
+                if yoo_payment:
+                    if yoo_payment.status == 'waiting_for_capture':
+                        # Подтверждаем платёж
+                        captured = YooPayment.capture(pending_payment.payment_id)
+                        yoo_payment = captured
+                        logger.info(f"Платёж {pending_payment.id} подтверждён, статус: {yoo_payment.status}")
+                    if yoo_payment.status == 'succeeded':
+                        # Открываем доступ
+                        pending_payment.status = 'succeeded'
+                        pending_payment.save()
+                        access, _ = MarathonAccess.objects.get_or_create(
+                            user=request.user,
+                            marathon=marathon,
+                            defaults={
+                                'amount_paid': pending_payment.amount,
+                                'payment_id': pending_payment.payment_id,
+                                'is_active': True,
+                            }
+                        )
+                        marathon.increment_sales()
+                        messages.success(request, 'Оплата прошла успешно! Доступ открыт.')
+                        has_access = True
+                    elif yoo_payment.status == 'canceled':
+                        pending_payment.status = 'canceled'
+                        pending_payment.save()
+                        messages.warning(request, 'Платёж был отменён.')
+            except Exception as e:
+                logger.error(f"Ошибка при проверке pending-платежа: {e}", exc_info=True)
 
-    # Эксклюзивные видео марафона (только для купивших)
+    # Если до сих пор нет доступа и есть параметр payment_id (старый fallback)
+    payment_id = request.GET.get('payment_id')
+    if payment_id and not has_access and request.user.is_authenticated:
+        try:
+            payment = Payment.objects.get(id=payment_id, user=request.user, status='pending')
+            if payment.payment_id:
+                yoo_payment = YooPayment.find_one(payment.payment_id)
+                logger.info(f"Fallback: checking payment {payment.payment_id}, status={yoo_payment.status if yoo_payment else 'None'}")
+                if yoo_payment:
+                    if yoo_payment.status == 'waiting_for_capture':
+                        captured = YooPayment.capture(payment.payment_id)
+                        yoo_payment = captured
+                        logger.info(f"Платёж подтверждён, новый статус: {yoo_payment.status}")
+                    if yoo_payment.status == 'succeeded':
+                        payment.status = 'succeeded'
+                        payment.save()
+                        access, _ = MarathonAccess.objects.get_or_create(
+                            user=request.user,
+                            marathon=marathon,
+                            defaults={
+                                'amount_paid': payment.amount,
+                                'payment_id': payment.payment_id,
+                                'is_active': True,
+                            }
+                        )
+                        marathon.increment_sales()
+                        messages.success(request, 'Оплата прошла успешно! Доступ открыт.')
+                        has_access = True
+                    elif yoo_payment.status == 'canceled':
+                        payment.status = 'canceled'
+                        payment.save()
+                        messages.warning(request, 'Платёж был отменён.')
+            else:
+                logger.warning(f"Платёж {payment.id} не имеет внешнего payment_id")
+        except Payment.DoesNotExist:
+            logger.warning(f"Платёж {payment_id} не найден в БД")
+        except Exception as e:
+            logger.error(f"Ошибка при проверке платежа: {e}", exc_info=True)
+
+    # Получаем видео для шаблона
+    teaser_videos = marathon.teaser_videos.filter(is_free=True).order_by('created_at')[:6]
     marathon_videos = marathon.marathon_videos.all().order_by('order')
 
     return render(request, 'core/marathon_detail.html', {
         'marathon': marathon,
         'has_access': has_access,
         'access_obj': access_obj,
-
-        # Видео
         'teaser_videos': teaser_videos,
         'marathon_videos': marathon_videos if has_access else [],
-
-        # Статистика
         'teaser_videos_count': teaser_videos.count(),
         'marathon_videos_count': marathon_videos.count(),
-        'total_videos_count': marathon_videos.count(),  # только эксклюзивные для счетчика
-
-        # Для совместимости со старым кодом
+        'total_videos_count': marathon_videos.count(),
         'free_videos': teaser_videos,
         'paid_videos': marathon_videos if has_access else [],
         'all_videos': marathon_videos if has_access else [],
@@ -381,50 +455,185 @@ def marathon_detail(request, slug):
     })
 
 
+# @full_access_required
+# @login_required
+# def marathon_purchase(request, slug):
+#     """
+#     Покупка марафона (упрощенная версия)
+#     """
+#     marathon = get_object_or_404(Marathon, slug=slug, is_active=True)
+#
+#     # Проверяем, не имеет ли уже доступ
+#     if MarathonAccess.objects.filter(user=request.user, marathon=marathon).exists():
+#         messages.info(request, f'У вас уже есть доступ к марафону "{marathon.title}"')
+#         return redirect('marathon_detail', slug=slug)
+#
+#     # Проверяем подписку (если марафон входит в подписку)
+#     try:
+#         user_profile = UserProfile.objects.get(user=request.user)
+#         if (user_profile.subscription_active and
+#                 marathon.included_in_subscription):
+#             messages.info(request,
+#                           f'Марафон "{marathon.title}" уже доступен по вашей подписке!')
+#             return redirect('marathon_detail', slug=slug)
+#     except UserProfile.DoesNotExist:
+#         pass
+#
+#     # Здесь должна быть интеграция с платежной системой
+#     # Пока просто создаем доступ
+#
+#     # Увеличиваем счетчик продаж
+#     marathon.increment_sales()
+#
+#     # Создаем доступ
+#     MarathonAccess.objects.create(
+#         user=request.user,
+#         marathon=marathon,
+#         amount_paid=marathon.price,
+#         is_active=True,
+#         valid_until=timezone.now() + timedelta(days=365)  # 1 год доступа
+#     )
+#
+#     messages.success(request,
+#                      f'Марафон "{marathon.title}" успешно приобретен! Сумма: {marathon.price}₽')
+#
+#     # Отправляем на страницу марафона
+#     return redirect('marathon_detail', slug=slug)
+
 @full_access_required
 @login_required
 def marathon_purchase(request, slug):
-    """
-    Покупка марафона (упрощенная версия)
-    """
     marathon = get_object_or_404(Marathon, slug=slug, is_active=True)
 
-    # Проверяем, не имеет ли уже доступ
+    # Проверка на уже имеющийся доступ
     if MarathonAccess.objects.filter(user=request.user, marathon=marathon).exists():
         messages.info(request, f'У вас уже есть доступ к марафону "{marathon.title}"')
         return redirect('marathon_detail', slug=slug)
 
-    # Проверяем подписку (если марафон входит в подписку)
-    try:
-        user_profile = UserProfile.objects.get(user=request.user)
-        if (user_profile.subscription_active and
-                marathon.included_in_subscription):
-            messages.info(request,
-                          f'Марафон "{marathon.title}" уже доступен по вашей подписке!')
-            return redirect('marathon_detail', slug=slug)
-    except UserProfile.DoesNotExist:
-        pass
-
-    # Здесь должна быть интеграция с платежной системой
-    # Пока просто создаем доступ
-
-    # Увеличиваем счетчик продаж
-    marathon.increment_sales()
-
-    # Создаем доступ
-    MarathonAccess.objects.create(
+    # Проверка на незавершённый платёж
+    existing_payment = Payment.objects.filter(
         user=request.user,
         marathon=marathon,
-        amount_paid=marathon.price,
-        is_active=True,
-        valid_until=timezone.now() + timedelta(days=365)  # 1 год доступа
+        status='pending'
+    ).first()
+    if existing_payment and existing_payment.confirmation_url:
+        # Если есть сохранённая ссылка — перенаправляем на неё
+        return redirect(existing_payment.confirmation_url)
+
+    # Создаём запись о платеже в нашей базе
+    payment = Payment.objects.create(
+        user=request.user,
+        marathon=marathon,
+        amount=marathon.price,
+        status='pending'
     )
 
-    messages.success(request,
-                     f'Марафон "{marathon.title}" успешно приобретен! Сумма: {marathon.price}₽')
+    logger.info(f"Попытка создать платёж для марафона {marathon.id}, сумма {marathon.price}")
+    idempotence_key = str(uuid.uuid4())
 
-    # Отправляем на страницу марафона
-    return redirect('marathon_detail', slug=slug)
+    if settings.DEBUG:
+        return_url = f"http://localhost:8080{reverse('marathon_detail', args=[marathon.slug])}?payment_id={payment.id}"
+    else:
+        return_url = request.build_absolute_uri(
+            reverse('marathon_detail', args=[marathon.slug]) + f'?payment_id={payment.id}'
+        )
+
+    try:
+        yoo_payment = YooPayment.create({
+            "amount": {
+                "value": str(float(marathon.price)),
+                "currency": "RUB"
+            },
+            "payment_method_data": {
+                "type": "bank_card"
+            },
+            "confirmation": {
+                "type": "redirect",
+                "return_url": return_url
+            },
+            "description": f"Марафон «{marathon.title}»",
+            "metadata": {
+                "payment_id": payment.id,
+                "user_id": request.user.id,
+                "marathon_id": marathon.id
+            }
+        }, idempotence_key)
+
+        # Сохраняем ID платежа и confirmation_url
+        payment.payment_id = yoo_payment.id
+        payment.confirmation_url = yoo_payment.confirmation.confirmation_url
+        payment.save()
+
+        return redirect(payment.confirmation_url)
+
+    except (BadRequestError, UnauthorizedError) as e:
+        logger.error(f"Ошибка при создании платежа: {e}", exc_info=True)
+        messages.error(request, 'Не удалось создать платёж. Попробуйте позже.')
+        return redirect('marathon_detail', slug=slug)
+
+
+@csrf_exempt
+def payment_webhook(request):
+    """Обрабатывает уведомления от ЮKassa."""
+    if request.method != 'POST':
+        return HttpResponseBadRequest('Only POST allowed')
+
+    # Получаем JSON из тела запроса
+    try:
+        data = json.loads(request.body.decode('utf-8'))
+    except json.JSONDecodeError:
+        return HttpResponseBadRequest('Invalid JSON')
+
+    event = data.get('event')
+    payment_object = data.get('object', {})
+
+    # Извлекаем наш внутренний ID из метаданных
+    metadata = payment_object.get('metadata', {})
+    payment_id = metadata.get('payment_id')
+    if not payment_id:
+        # Не наш платёж — игнорируем
+        return HttpResponse('OK')
+
+    try:
+        payment = Payment.objects.get(id=payment_id)
+    except Payment.DoesNotExist:
+        logger.warning(f"Платёж {payment_id} не найден в БД")
+        return HttpResponse('OK')
+
+    # Обработка событий
+    if event == 'payment.succeeded':
+        if payment.status != 'succeeded':
+            payment.status = 'succeeded'
+            payment.save()
+
+            # Создаём доступ к марафону
+            access, created = MarathonAccess.objects.get_or_create(
+                user=payment.user,
+                marathon=payment.marathon,
+                defaults={
+                    'amount_paid': payment.amount,
+                    'payment_id': payment.payment_id,
+                    'is_active': True,
+                }
+            )
+            if not created:
+                access.amount_paid = payment.amount
+                access.payment_id = payment.payment_id
+                access.is_active = True
+                access.save()
+
+            # Увеличиваем счётчик продаж
+            payment.marathon.increment_sales()
+
+            logger.info(f"Платёж {payment_id} успешно завершён. Доступ открыт.")
+
+    elif event == 'payment.canceled':
+        payment.status = 'canceled'
+        payment.save()
+        logger.info(f"Платёж {payment_id} отменён.")
+
+    # Всегда возвращаем OK, чтобы ЮKassa не повторяла запрос
+    return HttpResponse('OK')
 
 
 @login_required

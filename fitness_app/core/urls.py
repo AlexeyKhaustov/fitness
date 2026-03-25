@@ -42,4 +42,6 @@ urlpatterns = [
     path('doc/<slug:doc_type>/', views.document_page, name='document_page'),
 
     path('accept-consent/', views.accept_consent, name='accept_consent'),
+
+    path('payment/webhook/', views.payment_webhook, name='payment_webhook'),
 ]

@@ -17,6 +17,7 @@ from .models import (UserProfile,
                      Document,
                      DocumentVersion,
                      UserConsent,
+                     Payment,
                      )
 
 
@@ -914,3 +915,26 @@ class UserConsentAdmin(admin.ModelAdmin):
     list_filter = ['document_version__document', 'consented_at']
     search_fields = ['user__username', 'user__email']
     readonly_fields = ['consented_at', 'ip_address', 'user_agent']
+
+
+@admin.register(Payment)
+class PaymentAdmin(admin.ModelAdmin):
+    list_display = ('id', 'user', 'marathon', 'amount', 'status', 'payment_id', 'created_at')
+    list_filter = ('status', 'created_at', 'user')
+    search_fields = ('user__username', 'user__email', 'marathon__title', 'payment_id')
+    readonly_fields = ('created_at', 'updated_at')
+    list_editable = ('status',)
+    list_per_page = 20
+
+    fieldsets = (
+        ('Основное', {
+            'fields': ('user', 'marathon', 'amount', 'status')
+        }),
+        ('Платёжная информация', {
+            'fields': ('payment_id', 'confirmation_url')
+        }),
+        ('Системное', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )

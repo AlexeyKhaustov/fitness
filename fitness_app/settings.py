@@ -266,3 +266,7 @@ class CustomAdminConfig:
         '/static/admin/css/category_admin.css',
         '/static/admin/css/base_overrides.css',
     ]
+
+# Настройки ЮKassa
+YOOKASSA_SHOP_ID = config('YOOKASSA_SHOP_ID')
+YOOKASSA_SECRET_KEY = config('YOOKASSA_SECRET_KEY')
