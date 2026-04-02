@@ -767,6 +767,15 @@
         max-height: 450px;
     }
 }
+
+/* Анимация для кнопки отправки */
+#send-btn {
+    transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.1s ease;
+}
+
+#send-btn:active {
+    transform: scale(0.95);
+}
   </style>
 </head>
 <body class="bg-gray-900 text-white min-h-screen flex flex-col">
@@ -790,6 +799,34 @@
             <a href="/" class="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent hover:opacity-90">
                 FitnessVideo
             </a>
+
+        <!-- Чат (выпадающее меню) -->
+        <div class="dropdown relative group">
+            <button class="hover:text-purple-400 transition flex items-center">
+                <i class="fa-regular fa-comment-dots mr-1"></i> Чат
+                <i class="fa-solid fa-chevron-down ml-1 text-xs"></i>
+            </button>
+
+            <!-- Невидимая зона для плавного перехода -->
+            <div class="absolute left-0 right-0 h-3 top-full"></div>
+
+            <!-- Меню: ширина подстраивается под контент (min-w-max) + отступ -->
+            <div class="dropdown-menu absolute right-0 top-full mt-3 min-w-max bg-gray-800 rounded-lg shadow-xl py-2 z-50
+                        opacity-0 invisible group-hover:opacity-100 group-hover:visible
+                        transition-all duration-300 transform -translate-y-3 group-hover:translate-y-0">
+                {% for room in chat_rooms %}
+                    <a href="{% url 'chat_room' room.slug %}"
+                       class="block px-4 py-3 hover:bg-purple-600 hover:text-white transition whitespace-nowrap">
+                        <i class="fa-regular fa-comment mr-3"></i>
+                        {{ room.name }}
+                    </a>
+                {% empty %}
+                    <div class="px-4 py-3 text-gray-400 whitespace-nowrap">
+                        Нет доступных чатов
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
 
             <!-- Навигация -->
             <nav class="flex items-center gap-6">
@@ -976,6 +1013,25 @@
                 {% endif %}
             </div>
         </div>
+
+            <!-- Чат в мобильном меню -->
+            <div class="py-2 px-4">
+                <button id="mobile-chat-toggle"
+                        class="w-full text-left flex items-center justify-between text-gray-400 hover:text-white transition">
+                    <span>Чат</span>
+                    <i class="fa-solid fa-chevron-down transition-transform duration-300"></i>
+                </button>
+                <div id="mobile-chat" class="mt-2 hidden">
+                    {% for room in chat_rooms %}
+                        <a href="{% url 'chat_room' room.slug %}"
+                           class="block py-2 px-4 hover:bg-purple-600 hover:text-white rounded text-sm transition">
+                            {{ room.name }}
+                        </a>
+                    {% empty %}
+                        <div class="text-gray-500 text-sm px-4 py-2">Нет доступных чатов</div>
+                    {% endfor %}
+                </div>
+            </div>
 
         {% if user.is_authenticated %}
         <div class="border-t border-gray-700 pt-3 mt-3">
@@ -1190,6 +1246,15 @@
             icon.classList.toggle('rotate-180');
         }
     });
+
+document.getElementById('mobile-chat-toggle')?.addEventListener('click', function() {
+    const chat = document.getElementById('mobile-chat');
+    const icon = this.querySelector('i');
+    if (chat) {
+        chat.classList.toggle('hidden');
+        icon.classList.toggle('rotate-180');
+    }
+});
   </script>
 </body>
 </html>

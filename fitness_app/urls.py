@@ -20,6 +20,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('accounts/', include('allauth.urls')),
     path('', include('fitness_app.core.urls')),
+    path('chat/', include('chat.urls')),
 ]
 
 if settings.DEBUG:

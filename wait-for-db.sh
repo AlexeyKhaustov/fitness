@@ -52,4 +52,4 @@ ls -la /app/staticfiles/admin/js/*.js 2>/dev/null || echo "⚠️ JS файлы 
 # Собираем статику (наши файлы уже на месте)
 python manage.py collectstatic --noinput --clear
 
-exec gunicorn --bind 0.0.0.0:8000 fitness_app.wsgi:application
+exec uvicorn fitness_app.asgi:application --host 0.0.0.0 --port 8000 --workers 4

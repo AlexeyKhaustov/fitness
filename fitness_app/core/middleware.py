@@ -39,10 +39,8 @@ class ConsentMiddleware:
 class RequestLogMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
-        print("=== MIDDLEWARE INIT ===")  # временно
 
     def __call__(self, request):
-        print(f"=== MIDDLEWARE CALL for {request.path} ===")  # временно
         start_time = time.time()
         response = self.get_response(request)
         duration = time.time() - start_time

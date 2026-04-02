@@ -356,7 +356,7 @@ def marathon_detail(request, slug):
         ).first()
         has_access = access_obj and access_obj.is_valid()
 
-    # Если доступа нет, проверяем наличие pending-платежа и его статус в ЮKassa
+    # Если доступа нет, проверяем наличие pending-платежа и его статус в YKassa
     if not has_access and request.user.is_authenticated:
         pending_payment = Payment.objects.filter(
             user=request.user,

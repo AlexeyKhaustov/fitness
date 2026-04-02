@@ -47,6 +47,17 @@ if DEBUG:
 
 CSRF_TRUSTED_ORIGINS = list(set(CSRF_TRUSTED_ORIGINS))
 
+ASGI_APPLICATION = "fitness_app.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("redis", 6379)],
+        },
+    },
+}
+
 # Приложения
 INSTALLED_APPS = [
     'django_prometheus',
@@ -57,10 +68,12 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',
+    'channels',
     'allauth',
     'allauth.account',
     'rest_framework',
     'fitness_app.core',
+    'chat',
 ]
 
 MIDDLEWARE = [
@@ -96,6 +109,7 @@ TEMPLATES = [
                 'fitness_app.core.context_processors.marathon_stats',
                 'fitness_app.core.context_processors.user_marathon_access',
                 'fitness_app.core.context_processors.categories_processor',
+                'chat.context_processors.user_chat_rooms',
             ],
         },
     },
