@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="flex flex-col h-[calc(100vh-64px)] md:h-[calc(100vh-80px)] w-full overflow-hidden">
-    <!-- Заголовок с кнопкой назад для мобильных -->
+    <!-- Заголовок чата -->
     <div class="sticky top-0 z-10 bg-gray-900 p-4 border-b border-gray-700 flex items-center gap-4">
         <a href="javascript:history.back()" class="md:hidden text-gray-400 hover:text-white">
             <i class="fa-solid fa-arrow-left text-xl"></i>
@@ -11,7 +11,7 @@
         <h1 class="text-xl font-bold">{{ room.name }}</h1>
     </div>
 
-    <!-- Контейнер сообщений с прокруткой -->
+    <!-- Контейнер для сообщений (динамически наполняется через JS) -->
     <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
 
     <!-- Форма отправки сообщения -->
@@ -27,14 +27,22 @@
 </div>
 
 <script>
+    // ---------- Глобальные переменные ----------
     const roomSlug = "{{ room.slug }}";
-    let ws;
-    let reconnectInterval;
+    let ws;                     // WebSocket-соединение
+    let reconnectTimer = null;  // Таймер для переподключения
+    let reconnectAttempts = 0;  // Счётчик неудачных попыток (для экспоненциальной задержки)
+    let pingInterval = null;    // Интервал отправки ping (heartbeat)
 
+    /**
+     * Добавляет одно сообщение в DOM-контейнер.
+     * @param {Object} msg - объект сообщения {id, text, username, user_id, created_at}
+     */
     function appendMessage(msg) {
         const messagesDiv = document.getElementById('chat-messages');
         const messageDiv = document.createElement('div');
         messageDiv.classList.add('flex', 'flex-col');
+        // Используем шаблонную строку для вёрстки сообщения
         messageDiv.innerHTML = `
             <div class="flex items-start gap-2">
                 <div class="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-sm font-bold">
@@ -50,9 +58,15 @@
             </div>
         `;
         messagesDiv.appendChild(messageDiv);
+        // Автопрокрутка вниз при новом сообщении
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
+    /**
+     * Экранирует спецсимволы HTML для защиты от XSS.
+     * @param {string} str - исходная строка
+     * @returns {string} безопасная строка
+     */
     function escapeHtml(str) {
         return str.replace(/[&<>]/g, function(m) {
             if (m === '&') return '&amp;';
@@ -62,80 +76,113 @@
         });
     }
 
+    /**
+     * Устанавливает WebSocket-соединение с экспоненциальным переподключением и heartbeat'ом.
+     */
     function connectWebSocket() {
+        // Отменяем предыдущий таймер переподключения (если есть)
+        if (reconnectTimer) {
+            clearTimeout(reconnectTimer);
+            reconnectTimer = null;
+        }
+
+        // Определяем протокол (wss для HTTPS, ws для HTTP)
         const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
         ws = new WebSocket(`${protocol}${window.location.host}/ws/chat/${roomSlug}/`);
 
+        // --- Событие открытия соединения ---
         ws.onopen = () => {
             console.log('WebSocket connected');
-            if (reconnectInterval) clearInterval(reconnectInterval);
+            reconnectAttempts = 0; // Сброс счётчика при успешном подключении
+
+            // Запускаем heartbeat: каждые 30 секунд отправляем ping, чтобы соединение не закрывалось
+            if (pingInterval) clearInterval(pingInterval);
+            pingInterval = setInterval(() => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: 'ping' }));
+                }
+            }, 30000);
         };
 
+        // --- Обработка входящих сообщений ---
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
+            // Если пришла история (тип 'history') – очищаем контейнер и загружаем все сообщения заново
             if (data.type === 'history') {
+                const messagesDiv = document.getElementById('chat-messages');
+                messagesDiv.innerHTML = ''; // ← КЛЮЧЕВОЙ МОМЕНТ: удаляем дублирующиеся старые сообщения
                 data.messages.forEach(msg => appendMessage(msg));
-            } else {
+            }
+            // Ответ на ping от сервера (pong) – просто игнорируем, но можно логировать
+            else if (data.type === 'pong') {
+                // Ничего не делаем, соединение живо
+            }
+            // Обычное сообщение чата (без type или type='chat_message')
+            else {
                 appendMessage(data);
             }
         };
 
+        // --- Событие закрытия соединения ---
         ws.onclose = () => {
-            console.log('WebSocket disconnected, reconnecting in 3 seconds...');
-            reconnectInterval = setInterval(() => {
-                connectWebSocket();
-            }, 3000);
+            console.log('WebSocket disconnected');
+            // Останавливаем heartbeat, т.к. соединения больше нет
+            if (pingInterval) clearInterval(pingInterval);
+
+            // Вычисляем задержку по экспоненциальному алгоритму (3, 4.5, 6.75, ... секунд)
+            // с максимальным ограничением 30 секунд.
+            let delay = Math.min(30000, 3000 * Math.pow(1.5, reconnectAttempts));
+            console.log(`Reconnecting in ${delay/1000}s...`);
+            // Планируем переподключение
+            reconnectTimer = setTimeout(connectWebSocket, delay);
+            reconnectAttempts++; // Увеличиваем счётчик для следующей попытки
         };
 
-        ws.onerror = (error) => console.error('WebSocket error:', error);
+        // --- Обработка ошибок WebSocket (обычно логируем, закрытие уже вызовет onclose) ---
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
     }
 
+    // Запускаем соединение при загрузке страницы
     connectWebSocket();
 
-    document.getElementById('send-btn').onclick = () => {
-        const input = document.getElementById('chat-input');
-        const message = input.value.trim();
-        if (message) {
+    // ---------- Логика кнопки отправки сообщения ----------
+    const sendBtn = document.getElementById('send-btn');
+    const chatInput = document.getElementById('chat-input');
+    const sendIcon = document.getElementById('send-icon');
+
+    /**
+     * Показывает или скрывает кнопку отправки в зависимости от наличия текста в поле ввода.
+     */
+    function updateSendButton() {
+        const hasText = chatInput.value.trim().length > 0;
+        if (hasText) {
+            sendBtn.classList.remove('opacity-0', 'invisible', 'pointer-events-none');
+            sendBtn.classList.add('opacity-100', 'visible');
+            sendIcon.className = 'fa-regular fa-paper-plane';
+            sendBtn.disabled = false;
+        } else {
+            sendBtn.classList.add('opacity-0', 'invisible', 'pointer-events-none');
+            sendBtn.classList.remove('opacity-100', 'visible');
+            sendBtn.disabled = true;
+        }
+    }
+
+    // Следим за изменениями в поле ввода
+    chatInput.addEventListener('input', updateSendButton);
+
+    // Отправка сообщения по нажатию на кнопку
+    sendBtn.onclick = () => {
+        const message = chatInput.value.trim();
+        if (message && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ message: message }));
-            input.value = '';
+            chatInput.value = '';
+            updateSendButton(); // Скрываем кнопку после отправки
         }
     };
 
-const sendBtn = document.getElementById('send-btn');
-const chatInput = document.getElementById('chat-input');
-const sendIcon = document.getElementById('send-icon');
-
-function updateSendButton() {
-    const hasText = chatInput.value.trim().length > 0;
-
-    if (hasText) {
-        // Показываем кнопку с иконкой отправки
-        sendBtn.classList.remove('opacity-0', 'invisible', 'pointer-events-none');
-        sendBtn.classList.add('opacity-100', 'visible');
-        sendIcon.className = 'fa-regular fa-paper-plane';
-        sendBtn.disabled = false;
-    } else {
-        // Скрываем кнопку (или можно оставить микрофон, но для простоты скроем)
-        sendBtn.classList.add('opacity-0', 'invisible', 'pointer-events-none');
-        sendBtn.classList.remove('opacity-100', 'visible');
-        sendBtn.disabled = true;
-    }
-}
-
-// Следим за изменениями в поле ввода
-chatInput.addEventListener('input', updateSendButton);
-
-// Переопределяем клик по кнопке (не трогаем существующий ws.onmessage и т.д.)
-sendBtn.onclick = () => {
-    const message = chatInput.value.trim();
-    if (message) {
-        ws.send(JSON.stringify({ message: message }));
-        chatInput.value = '';
-        updateSendButton(); // скрываем кнопку после отправки
-    }
-};
-
-// Инициализируем состояние
-updateSendButton();
+    // Инициализация состояния кнопки
+    updateSendButton();
 </script>
 {% endblock %}
