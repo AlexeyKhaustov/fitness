@@ -3,7 +3,6 @@
 
 {% block content %}
 <div class="flex flex-col h-[calc(100vh-64px)] md:h-[calc(100vh-80px)] w-full overflow-hidden">
-    <!-- Заголовок чата -->
     <div class="sticky top-0 z-10 bg-gray-900 p-4 border-b border-gray-700 flex items-center gap-4">
         <a href="javascript:history.back()" class="md:hidden text-gray-400 hover:text-white">
             <i class="fa-solid fa-arrow-left text-xl"></i>
@@ -11,10 +10,8 @@
         <h1 class="text-xl font-bold">{{ room.name }}</h1>
     </div>
 
-    <!-- Контейнер для сообщений (динамически наполняется через JS) -->
     <div id="chat-messages" class="flex-1 overflow-y-auto p-4 space-y-4"></div>
 
-    <!-- Форма отправки сообщения -->
     <div class="sticky bottom-0 bg-gray-800 p-4 border-t border-gray-700 flex gap-2 items-center">
         <input type="text" id="chat-input"
                class="flex-1 bg-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
@@ -27,22 +24,18 @@
 </div>
 
 <script>
-    // ---------- Глобальные переменные ----------
     const roomSlug = "{{ room.slug }}";
-    let ws;                     // WebSocket-соединение
-    let reconnectTimer = null;  // Таймер для переподключения
-    let reconnectAttempts = 0;  // Счётчик неудачных попыток (для экспоненциальной задержки)
-    let pingInterval = null;    // Интервал отправки ping (heartbeat)
+    let ws = null;
+    let reconnectTimer = null;
+    let reconnectAttempts = 0;
+    let pingInterval = null;
+    let isConnecting = false;          // Флаг, чтобы не создавать несколько соединений одновременно
+    const MAX_RECONNECT_ATTEMPTS = 10; // Максимум попыток переподключения
 
-    /**
-     * Добавляет одно сообщение в DOM-контейнер.
-     * @param {Object} msg - объект сообщения {id, text, username, user_id, created_at}
-     */
     function appendMessage(msg) {
         const messagesDiv = document.getElementById('chat-messages');
         const messageDiv = document.createElement('div');
         messageDiv.classList.add('flex', 'flex-col');
-        // Используем шаблонную строку для вёрстки сообщения
         messageDiv.innerHTML = `
             <div class="flex items-start gap-2">
                 <div class="w-8 h-8 rounded-full bg-purple-600 flex items-center justify-center text-sm font-bold">
@@ -58,15 +51,9 @@
             </div>
         `;
         messagesDiv.appendChild(messageDiv);
-        // Автопрокрутка вниз при новом сообщении
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     }
 
-    /**
-     * Экранирует спецсимволы HTML для защиты от XSS.
-     * @param {string} str - исходная строка
-     * @returns {string} безопасная строка
-     */
     function escapeHtml(str) {
         return str.replace(/[&<>]/g, function(m) {
             if (m === '&') return '&amp;';
@@ -76,75 +63,89 @@
         });
     }
 
-    /**
-     * Устанавливает WebSocket-соединение с экспоненциальным переподключением и heartbeat'ом.
-     */
     function connectWebSocket() {
-        // Отменяем предыдущий таймер переподключения (если есть)
+        // Защита от параллельных вызовов
+        if (isConnecting) {
+            console.log('WebSocket connection already in progress, skipping...');
+            return;
+        }
+
+        // Если уже есть открытое или соединяющееся соединение, не создаём новое
+        if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+            console.log('WebSocket already open or connecting, skipping reconnect');
+            return;
+        }
+
+        // Отменяем предыдущий таймер переподключения, если есть
         if (reconnectTimer) {
             clearTimeout(reconnectTimer);
             reconnectTimer = null;
         }
 
-        // Определяем протокол (wss для HTTPS, ws для HTTP)
+        isConnecting = true;
         const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
         ws = new WebSocket(`${protocol}${window.location.host}/ws/chat/${roomSlug}/`);
 
-        // --- Событие открытия соединения ---
         ws.onopen = () => {
             console.log('WebSocket connected');
+            isConnecting = false;
             reconnectAttempts = 0; // Сброс счётчика при успешном подключении
 
-            // Запускаем heartbeat: каждые 30 секунд отправляем ping, чтобы соединение не закрывалось
+            // Запускаем ping каждые 20 секунд (для нестабильных сетей лучше 20, а не 30)
             if (pingInterval) clearInterval(pingInterval);
             pingInterval = setInterval(() => {
-                if (ws.readyState === WebSocket.OPEN) {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    console.log('Sending ping');
                     ws.send(JSON.stringify({ type: 'ping' }));
                 }
-            }, 30000);
+            }, 20000);
         };
 
-        // --- Обработка входящих сообщений ---
         ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            // Если пришла история (тип 'history') – очищаем контейнер и загружаем все сообщения заново
             if (data.type === 'history') {
                 const messagesDiv = document.getElementById('chat-messages');
-                messagesDiv.innerHTML = ''; // ← КЛЮЧЕВОЙ МОМЕНТ: удаляем дублирующиеся старые сообщения
+                messagesDiv.innerHTML = '';
                 data.messages.forEach(msg => appendMessage(msg));
-            }
-            // Ответ на ping от сервера (pong) – просто игнорируем, но можно логировать
-            else if (data.type === 'pong') {
-                // Ничего не делаем, соединение живо
-            }
-            // Обычное сообщение чата (без type или type='chat_message')
-            else {
+            } else if (data.type === 'pong') {
+                console.log('Received pong');
+            } else {
                 appendMessage(data);
             }
         };
 
-        // --- Событие закрытия соединения ---
-        ws.onclose = () => {
-            console.log('WebSocket disconnected');
-            // Останавливаем heartbeat, т.к. соединения больше нет
+        ws.onclose = (event) => {
+            console.log(`WebSocket disconnected, code: ${event.code}, reason: ${event.reason}`);
+            isConnecting = false;
             if (pingInterval) clearInterval(pingInterval);
 
-            // Вычисляем задержку по экспоненциальному алгоритму (3, 4.5, 6.75, ... секунд)
-            // с максимальным ограничением 30 секунд.
+            // Проверяем, не превышено ли максимальное число попыток
+            if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+                console.error(`Max reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Please reload the page.`);
+                const messagesDiv = document.getElementById('chat-messages');
+                const errorDiv = document.createElement('div');
+                errorDiv.classList.add('text-center', 'text-red-500', 'p-4', 'bg-gray-800', 'rounded');
+                errorDiv.innerText = 'Не удалось подключиться к чату. Перезагрузите страницу.';
+                messagesDiv.appendChild(errorDiv);
+                return;
+            }
+
+            // Экспоненциальная задержка, но не более 30 секунд
             let delay = Math.min(30000, 3000 * Math.pow(1.5, reconnectAttempts));
-            console.log(`Reconnecting in ${delay/1000}s...`);
-            // Планируем переподключение
-            reconnectTimer = setTimeout(connectWebSocket, delay);
-            reconnectAttempts++; // Увеличиваем счётчик для следующей попытки
+            console.log(`Reconnecting in ${delay/1000}s... (attempt ${reconnectAttempts + 1}/${MAX_RECONNECT_ATTEMPTS})`);
+            reconnectTimer = setTimeout(() => {
+                connectWebSocket();
+            }, delay);
+            reconnectAttempts++;
         };
 
-        // --- Обработка ошибок WebSocket (обычно логируем, закрытие уже вызовет onclose) ---
         ws.onerror = (error) => {
             console.error('WebSocket error:', error);
+            // onerror не закрывает соединение, onclose вызовется позже
         };
     }
 
-    // Запускаем соединение при загрузке страницы
+    // Запускаем соединение
     connectWebSocket();
 
     // ---------- Логика кнопки отправки сообщения ----------
@@ -152,9 +153,6 @@
     const chatInput = document.getElementById('chat-input');
     const sendIcon = document.getElementById('send-icon');
 
-    /**
-     * Показывает или скрывает кнопку отправки в зависимости от наличия текста в поле ввода.
-     */
     function updateSendButton() {
         const hasText = chatInput.value.trim().length > 0;
         if (hasText) {
@@ -169,20 +167,19 @@
         }
     }
 
-    // Следим за изменениями в поле ввода
     chatInput.addEventListener('input', updateSendButton);
 
-    // Отправка сообщения по нажатию на кнопку
     sendBtn.onclick = () => {
         const message = chatInput.value.trim();
-        if (message && ws.readyState === WebSocket.OPEN) {
+        if (message && ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ message: message }));
             chatInput.value = '';
-            updateSendButton(); // Скрываем кнопку после отправки
+            updateSendButton();
+        } else {
+            console.warn('Cannot send message, WebSocket is not open');
         }
     };
 
-    // Инициализация состояния кнопки
     updateSendButton();
 </script>
 {% endblock %}

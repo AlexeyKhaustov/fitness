@@ -38,17 +38,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         # Анонимные пользователи не допускаются
         if self.user.is_anonymous:
+            print(f"WebSocket rejected: anonymous user for room {self.room_slug}")
             await self.close()
             return
 
         # Загружаем объект комнаты из БД
         self.room = await self.get_room(self.room_slug)
         if not self.room:
+            print(f"WebSocket rejected: room {self.room_slug} not found or inactive")
             await self.close()
             return
 
         # Проверяем, имеет ли пользователь доступ к этой комнате
         if not await self.check_access():
+            print(f"WebSocket rejected: user {self.user.username} has no access to room {self.room_slug}")
             await self.close()
             return
 
