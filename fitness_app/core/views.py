@@ -120,6 +120,7 @@ class VideoDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context['hls_stream_url'] = self.object.hls_master_playlist if self.object.is_processed else None
         video = self.object
 
         user_profile, _ = UserProfile.objects.get_or_create(user=self.request.user)

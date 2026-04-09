@@ -74,6 +74,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'fitness_app.core',
     'chat',
+    'django_celery_results', # Для хранения результатов задач в БД
 ]
 
 MIDDLEWARE = [
@@ -284,3 +285,41 @@ class CustomAdminConfig:
 # Настройки ЮKassa
 YOOKASSA_SHOP_ID = config('YOOKASSA_SHOP_ID', default='')
 YOOKASSA_SECRET_KEY = config('YOOKASSA_SECRET_KEY', default='')
+
+# Celery & Redis
+CELERY_BROKER_URL = 'redis://redis:6379/0'
+CELERY_RESULT_BACKEND = 'django-db'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+
+# Настройка хранилищ
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {
+            "location": BASE_DIR / "media",
+            "base_url": "/media/",
+        },
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+    "video_storage": {   # отдельное хранилище для видео, будет использоваться через наш интерфейс
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {
+            "location": BASE_DIR / "media/videos",
+            "base_url": "/media/videos/",
+        },
+    },
+}
+
+# Видео-хранилище: local или s3
+VIDEO_STORAGE_BACKEND = config("VIDEO_STORAGE_BACKEND", default="local")
+
+# Настройки S3 (будут использоваться, если VIDEO_STORAGE_BACKEND=s3)
+AWS_ACCESS_KEY_ID = config("AWS_ACCESS_KEY_ID", default="")
+AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY", default="")
+AWS_STORAGE_BUCKET_NAME = config("AWS_STORAGE_BUCKET_NAME", default="")
+AWS_S3_ENDPOINT_URL = config("AWS_S3_ENDPOINT_URL", default="")
+AWS_S3_REGION_NAME = config("AWS_S3_REGION_NAME", default="ru-msk")

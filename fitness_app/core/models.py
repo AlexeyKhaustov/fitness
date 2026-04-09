@@ -107,10 +107,36 @@ class Video(models.Model):
     created_at = models.DateTimeField('Дата добавления', auto_now_add=True)
     views = models.IntegerField('Просмотры', default=0)
 
-    # Новые поля для социальных функций (только для бесплатных видео)
+    # Поля для социальных функций (только для бесплатных видео)
     allow_comments = models.BooleanField('Разрешить комментарии', default=True)
     allow_sharing = models.BooleanField('Разрешить репост', default=True)
     allow_likes = models.BooleanField('Разрешить лайки', default=True)
+
+    # Поля для HLS и обработки
+    hls_master_playlist = models.URLField(
+        "HLS master playlist",
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text="URL master.m3u8 после обработки"
+    )
+    hls_profiles = models.JSONField(
+        "Профили HLS",
+        default=dict,
+        blank=True,
+        help_text="Словарь с URL для каждого профиля (1080p, 720p, ...)"
+    )
+    is_processed = models.BooleanField(
+        "Обработано в HLS",
+        default=False,
+        help_text="Флаг, указывающий, что видео прошло транскодирование"
+    )
+    processing_error = models.TextField(
+        "Ошибка обработки",
+        blank=True,
+        null=True,
+        help_text="Текст ошибки, если обработка не удалась"
+    )
 
     # Для премиум видео отключаем социальные функции
     def save(self, *args, **kwargs):
