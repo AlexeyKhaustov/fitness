@@ -4,6 +4,7 @@ from pathlib import Path
 
 from decouple import config
 from django.contrib.messages import constants as messages
+from django.conf import settings
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -75,6 +76,7 @@ INSTALLED_APPS = [
     'fitness_app.core',
     'chat',
     'django_celery_results', # Для хранения результатов задач в БД
+    'admin_async_upload',
 ]
 
 MIDDLEWARE = [
@@ -327,3 +329,17 @@ AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY", default="")
 AWS_STORAGE_BUCKET_NAME = config("AWS_STORAGE_BUCKET_NAME", default="")
 AWS_S3_ENDPOINT_URL = config("AWS_S3_ENDPOINT_URL", default="")
 AWS_S3_REGION_NAME = config("AWS_S3_REGION_NAME", default="ru-msk")
+
+# --- Настройки для django-async-upload-kg ---
+ADMIN_RESUMABLE_CHUNKSIZE = 10 * 1024 * 1024   # Размер одного чанка (10 МБ)
+ADMIN_SIMULTANEOUS_UPLOADS = 3                 # Количество одновременных загрузок
+
+# Указываем, где будут храниться временные чанки.
+# Важно: папка должна быть внутри смонтированного тома, чтобы не дублировать файлы.
+ADMIN_RESUMABLE_CHUNK_STORAGE = 'django.core.files.storage.FileSystemStorage'
+# Путь внутри контейнера, который указывает на папку в томе media
+CHUNK_STORAGE_PATH = os.path.join(settings.MEDIA_ROOT, 'chunks')
+os.makedirs(CHUNK_STORAGE_PATH, exist_ok=True)
+ADMIN_RESUMABLE_CHUNK_STORAGE_OPTIONS = {
+    'location': CHUNK_STORAGE_PATH,
+}

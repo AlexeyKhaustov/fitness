@@ -21,6 +21,8 @@ urlpatterns = [
     path('accounts/', include('allauth.urls')),
     path('', include('fitness_app.core.urls')),
     path('chat/', include('chat.urls')),
+
+    path('admin_async_upload/', include('admin_async_upload.urls')),
 ]
 
 if settings.DEBUG:
