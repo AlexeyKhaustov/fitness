@@ -311,39 +311,10 @@ if USE_S3:
         "bucket_name": config('AWS_STORAGE_BUCKET_NAME'),
         "endpoint_url": config('AWS_S3_ENDPOINT_URL'),
         "region_name": config('AWS_S3_REGION_NAME'),
-        "default_acl": "private",
     }
 
     STORAGES = {
-        "default": {
-            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-            "OPTIONS": {
-                **COMMON_S3_OPTIONS,
-                "querystring_auth": False,   # для публичных медиа (картинки, аватары)
-                "location": "media",
-            },
-        },
-        "staticfiles": {
-            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-            "OPTIONS": {
-                **COMMON_S3_OPTIONS,
-                "querystring_auth": False,
-                "location": "static",
-            },
-        },
-        "private_video": {
-            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-            "OPTIONS": {
-                **COMMON_S3_OPTIONS,
-                "querystring_auth": True,      # подписанные URL для видео
-                "querystring_expire": 3600,
-                "location": "videos",
-            },
-        },
-    }
-else:
-    # Локальное хранилище (разработка)
-    STORAGES = {
+        # Обычные медиа (картинки, аватарки) — пока оставляем локально
         "default": {
             "BACKEND": "django.core.files.storage.FileSystemStorage",
             "OPTIONS": {
@@ -351,14 +322,33 @@ else:
                 "base_url": "/media/",
             },
         },
+        # Статика — локально (через Nginx)
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+        # Видео — в S3 с подписанными URL
+        "private_video": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+            "OPTIONS": {
+                **COMMON_S3_OPTIONS,
+                "default_acl": "private",
+                "querystring_auth": True,
+                "querystring_expire": 3600,
+                "location": "videos",
+            },
+        },
+    }
+else:
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+            "OPTIONS": {"location": BASE_DIR / "media", "base_url": "/media/"},
+        },
         "staticfiles": {
             "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
         },
         "private_video": {
             "BACKEND": "django.core.files.storage.FileSystemStorage",
-            "OPTIONS": {
-                "location": BASE_DIR / "media/videos",
-                "base_url": "/media/videos/",
-            },
+            "OPTIONS": {"location": BASE_DIR / "media/videos", "base_url": "/media/videos/"},
         },
     }
