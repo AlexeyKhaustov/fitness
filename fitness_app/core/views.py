@@ -12,7 +12,7 @@ from django.views.generic import DetailView
 from django.views.decorators.http import require_POST
 
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import HttpResponseForbidden, JsonResponse, HttpResponseBadRequest, HttpResponse
+from django.http import HttpResponseForbidden, JsonResponse, HttpResponseBadRequest, HttpResponse, Http404
 
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
@@ -106,7 +106,10 @@ class VideoDetailView(LoginRequiredMixin, DetailView):
         if not request.user.is_authenticated:
             return self.handle_no_permission()
 
-        video = Video.objects.get(id=kwargs.get('video_id'))
+        try:
+            video = Video.objects.get(id=kwargs.get('video_id'))
+        except Video.DoesNotExist:
+            raise Http404("Video does not exist")
 
         if video.is_free:
             return super().dispatch(request, *args, **kwargs)
