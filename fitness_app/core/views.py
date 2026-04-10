@@ -17,6 +17,7 @@ from django.http import HttpResponseForbidden, JsonResponse, HttpResponseBadRequ
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.core.mail import send_mail
+from django.core.files.storage import storages
 
 from .decorators import full_access_required
 from .forms import VideoCommentForm, ServiceRequestForm
@@ -120,9 +121,28 @@ class VideoDetailView(LoginRequiredMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['hls_stream_url'] = self.object.hls_master_playlist if self.object.is_processed else None
         video = self.object
 
+        # HLS stream URL (если видео обработано)
+        context['hls_stream_url'] = video.hls_master_playlist if video.is_processed else None
+
+        # Подписанный URL для обычного видео (mp4) – для необработанных видео
+        if video.file and not video.is_processed:
+            private_storage = storages['private_video']
+            # Генерируем подписанную ссылку (если querystring_auth=True в настройках хранилища)
+            context['signed_file_url'] = private_storage.url(video.file.name)
+        else:
+            context['signed_file_url'] = None
+
+        # Если видео уже обработано в HLS, тоже подписываем мастер-плейлист
+        if video.is_processed and video.hls_master_playlist:
+            private_storage = storages['private_video']
+            # Предполагаем, что в hls_master_playlist хранится относительный путь (например, 'videos/123/hls/master.m3u8')
+            context['hls_stream_url'] = private_storage.url(video.hls_master_playlist)
+        else:
+            context['hls_stream_url'] = None
+
+        # Профиль пользователя
         user_profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
         context['user_profile'] = user_profile
 
@@ -133,16 +153,14 @@ class VideoDetailView(LoginRequiredMixin, DetailView):
 
         # Комментарии и лайки (только для бесплатных видео)
         if video.is_free and video.allow_comments:
+            from .forms import VideoCommentForm
             context['comment_form'] = VideoCommentForm()
-
-            # Получаем только корневые комментарии (без parent)
             context['comments'] = video.comments.filter(
                 is_like=False,
                 is_approved=True,
-                parent__isnull=True  # Только корневые
+                parent__isnull=True
             ).select_related('user').order_by('-created_at')[:20]
 
-            # Проверяем, лайкал ли пользователь это видео
             if self.request.user.is_authenticated:
                 context['user_liked'] = video.comments.filter(
                     user=self.request.user,
@@ -150,6 +168,10 @@ class VideoDetailView(LoginRequiredMixin, DetailView):
                 ).exists()
             else:
                 context['user_liked'] = False
+        else:
+            context['comment_form'] = None
+            context['comments'] = []
+            context['user_liked'] = False
 
         return context
 

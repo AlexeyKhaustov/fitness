@@ -4,6 +4,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.urls import reverse
 from django.utils import timezone
+from django.core.files.storage import storages
 
 
 class UserProfile(models.Model):
@@ -93,7 +94,12 @@ class Category(models.Model):
 
 class Video(models.Model):
     title = models.CharField('Название', max_length=100)
-    file = models.FileField('Файл', upload_to='videos/%Y/%m/')
+    file = models.FileField(
+        'Файл',
+        upload_to='videos/%Y/%m/',
+        storage=storages['private_video'],
+        max_length=500,
+    )
     description = models.TextField('Описание')
     is_free = models.BooleanField('Бесплатное', default=False)
     categories = models.ManyToManyField(

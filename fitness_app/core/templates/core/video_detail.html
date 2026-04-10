@@ -82,34 +82,37 @@
                             </div>
                         </div>
                     {% else %}
-                        <!-- ОТКРЫТОЕ ВИДЕО -->
-                        {% if video.is_processed and video.hls_master_playlist %}
-                            <div class="aspect-video">
-                                <video id="my-video" class="w-full h-full" controls></video>
-                            </div>
-                            <script>
-                                const videoElement = document.getElementById('my-video');
-                                const streamUrl = '{{ video.hls_master_playlist }}';
-                                if (Hls.isSupported()) {
-                                    const hls = new Hls();
-                                    hls.loadSource(streamUrl);
-                                    hls.attachMedia(videoElement);
-                                } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-                                    videoElement.src = streamUrl;
-                                }
-                            </script>
-                        {% elif not video.is_processed %}
-                            <div class="bg-gray-800 rounded-2xl p-8 text-center">
-                                <i class="fa-solid fa-spinner fa-spin text-4xl text-purple-400 mb-4"></i>
-                                <p class="text-gray-300">Видео обрабатывается. Пожалуйста, обновите страницу позже.</p>
-                            </div>
-                        {% else %}
-                            <!-- Fallback: показываем оригинальный файл (если есть) -->
-                            <video controls class="w-full h-full">
-                                <source src="{{ video.file.url }}" type="video/mp4">
-                            </video>
-                        {% endif %}
-                </div>
+                  <!-- ОТКРЫТОЕ ВИДЕО -->
+                {% if video.is_processed and hls_stream_url %}
+                    <div class="aspect-video">
+                        <video id="my-video" class="w-full h-full" controls></video>
+                    </div>
+                    <script>
+                        const videoElement = document.getElementById('my-video');
+                        const streamUrl = '{{ hls_stream_url|safe }}';
+                        if (Hls.isSupported()) {
+                            const hls = new Hls();
+                            hls.loadSource(streamUrl);
+                            hls.attachMedia(videoElement);
+                        } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                            videoElement.src = streamUrl;
+                        }
+                    </script>
+                {% elif not video.is_processed %}
+                    <div class="bg-gray-800 rounded-2xl p-8 text-center">
+                        <i class="fa-solid fa-spinner fa-spin text-4xl text-purple-400 mb-4"></i>
+                        <p class="text-gray-300">Видео обрабатывается. Пожалуйста, обновите страницу позже.</p>
+                    </div>
+                {% elif signed_file_url %}
+                    <video controls class="w-full h-full">
+                        <source src="{{ signed_file_url|safe }}" type="video/mp4">
+                    </video>
+                {% else %}
+                    <div class="bg-gray-800 rounded-2xl p-8 text-center">
+                        <i class="fa-solid fa-exclamation-triangle text-4xl text-yellow-400 mb-4"></i>
+                        <p class="text-gray-300">Видео временно недоступно. Попробуйте позже.</p>
+                    </div>
+                {% endif %}
 
                 {% if not video.is_free and user_profile.subscription_active %}
                     <div class="bg-gradient-to-r from-green-900 to-emerald-900 p-4 flex items-center">
