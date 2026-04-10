@@ -73,4 +73,3 @@ django-redis==6.0.0
 boto3==1.42.59
 django-storages==1.14.6
 yookassa
-django-async-upload-kg==4.0.1

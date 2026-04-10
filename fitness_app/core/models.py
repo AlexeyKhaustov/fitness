@@ -5,8 +5,6 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from django.utils import timezone
 
-from admin_async_upload.models import AsyncFileField
-
 
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -95,13 +93,7 @@ class Category(models.Model):
 
 class Video(models.Model):
     title = models.CharField('Название', max_length=100)
-    file = AsyncFileField(
-        'Файл',
-        upload_to='videos/%Y/%m/',
-        max_length=500,
-        blank=True,
-        null=True
-    )
+    file = models.FileField('Файл', upload_to='videos/%Y/%m/')
     description = models.TextField('Описание')
     is_free = models.BooleanField('Бесплатное', default=False)
     categories = models.ManyToManyField(
