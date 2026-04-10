@@ -30,6 +30,8 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 @admin.register(Video)
 class VideoAdmin(admin.ModelAdmin):
+    change_form_template = 'admin/core/video/change_form.html'
+
     list_display = ('title', 'is_free', 'views', 'allow_comments', 'allow_likes', 'created_at')
     list_filter = ('is_free', 'allow_comments', 'allow_likes', 'categories')
     list_editable = ('is_free', 'allow_comments', 'allow_likes')
@@ -54,6 +56,12 @@ class VideoAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+    def save_model(self, request, obj, form, change):
+        if 'uploaded_file' in request.POST:
+            # Файл уже загружен через отдельную вьюху, просто сохраняем путь
+            obj.file = request.POST['uploaded_file']
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(Category)

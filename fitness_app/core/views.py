@@ -14,7 +14,6 @@ from django.views.decorators.http import require_POST
 from django.shortcuts import render, get_object_or_404, redirect
 from django.http import HttpResponseForbidden, JsonResponse, HttpResponseBadRequest, HttpResponse
 
-from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.core.mail import send_mail
 
@@ -38,6 +37,12 @@ from .models import (Category,
 
 from yookassa import Configuration, Payment as YooPayment
 from yookassa.domain.exceptions import BadRequestError, UnauthorizedError
+
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -885,4 +890,29 @@ def document_page(request, doc_type):
         'text': version.text,
         'version_date': version.created_at,
         'version_number': version.version_number
+    })
+
+@require_POST
+@csrf_exempt  # только для админки, можно обойтись без декоратора, если добавить csrf_exempt
+def upload_video_file(request):
+    if not request.user.is_staff:
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+
+    if 'file' not in request.FILES:
+        return JsonResponse({'error': 'No file provided'}, status=400)
+
+    uploaded_file = request.FILES['file']
+    # Генерируем путь, аналогичный тому, что в модели Video.upload_to
+    import time
+    from django.utils import timezone
+    now = timezone.now()
+    path = f'videos/{now.year}/{now.month:02d}/'
+    filename = f"{int(time.time())}_{uploaded_file.name}"
+    full_path = os.path.join(path, filename)
+
+    saved_path = default_storage.save(full_path, ContentFile(uploaded_file.read()))
+
+    return JsonResponse({
+        'file_path': saved_path,
+        'filename': filename,
     })

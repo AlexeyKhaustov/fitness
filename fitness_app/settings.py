@@ -160,10 +160,6 @@ STATICFILES_DIRS = [
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Папка для временных файлов внутри MEDIA_ROOT
-FILE_UPLOAD_TEMP_DIR = os.path.join(MEDIA_ROOT, 'tmp_uploads')
-os.makedirs(FILE_UPLOAD_TEMP_DIR, exist_ok=True)
-
 # Allauth настройки
 SITE_ID = 1
 AUTHENTICATION_BACKENDS = [

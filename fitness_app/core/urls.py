@@ -44,4 +44,6 @@ urlpatterns = [
     path('accept-consent/', views.accept_consent, name='accept_consent'),
 
     path('payment/webhook/', views.payment_webhook, name='payment_webhook'),
+
+    path('admin/core/video/upload-file/', views.upload_video_file, name='upload_video_file'),
 ]
