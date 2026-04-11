@@ -1,3 +1,6 @@
+import os
+import shutil
+import logging
 import hashlib
 
 from django.db import models
@@ -5,6 +8,7 @@ from django.contrib.auth.models import User
 from django.urls import reverse
 from django.utils import timezone
 from django.core.files.storage import storages
+from django.conf import settings
 
 
 class UserProfile(models.Model):
@@ -144,6 +148,11 @@ class Video(models.Model):
         help_text="Текст ошибки, если обработка не удалась"
     )
 
+    class Meta:
+        verbose_name = 'Видео'
+        verbose_name_plural = 'Видео'
+        ordering = ['-created_at']
+
     # Для премиум видео отключаем социальные функции
     def save(self, *args, **kwargs):
         if not self.is_free:
@@ -152,10 +161,33 @@ class Video(models.Model):
             self.allow_likes = False
         super().save(*args, **kwargs)
 
-    class Meta:
-        verbose_name = 'Видео'
-        verbose_name_plural = 'Видео'
-        ordering = ['-created_at']
+    def delete(self, *args, **kwargs):
+        """Удаляет видео и связанные с ним файлы (HLS и исходник)."""
+        # Удаляем HLS-файлы (папку videos/{id}/hls/)
+        try:
+            # Определяем путь к папке HLS в зависимости от хранилища
+            backend = getattr(settings, 'VIDEO_STORAGE_BACKEND', 'local')
+            if backend == 'local':
+                hls_path = os.path.join(settings.MEDIA_ROOT, 'videos', str(self.id), 'hls')
+                if os.path.exists(hls_path):
+                    shutil.rmtree(hls_path)
+                    logging.getLogger(__name__).info(f"Удалена папка HLS для видео {self.id}")
+            else:
+                # Для S3: в будущем можно реализовать удаление через storage.delete
+                # Пока пропускаем
+                pass
+        except Exception as e:
+            logging.getLogger(__name__).warning(f"Не удалось удалить HLS-файлы для видео {self.id}: {e}")
+
+        # Удаляем исходный файл, если он ещё существует
+        if self.file:
+            try:
+                self.file.delete(save=False)
+                logging.getLogger(__name__).info(f"Удалён исходный файл видео {self.id}")
+            except Exception as e:
+                logging.getLogger(__name__).warning(f"Не удалось удалить исходный файл видео {self.id}: {e}")
+
+        super().delete(*args, **kwargs)
 
     def __str__(self):
         return self.title

@@ -89,6 +89,8 @@
                                 <script>
                                     const videoElement = document.getElementById('my-video');
                                     const streamUrl = '{{ MEDIA_URL }}{{ video.hls_master_playlist }}';
+                                    console.log('{{ MEDIA_URL }}{{ video.hls_master_playlist }}');  // для отладки
+                                    console.log('Stream URL:', streamUrl);  // для отладки
                                     if (Hls.isSupported()) {
                                         const hls = new Hls();
                                         hls.loadSource(streamUrl);

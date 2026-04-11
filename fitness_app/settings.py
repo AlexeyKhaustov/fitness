@@ -105,6 +105,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'django.template.context_processors.media',
                 'fitness_app.core.context_processors.active_banners',
                 'fitness_app.core.context_processors.active_seo_blocks',
                 'fitness_app.core.context_processors.marathon_stats',

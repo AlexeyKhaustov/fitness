@@ -29,9 +29,10 @@ def process_video_to_hls(self, video_id: int):
     - Создаёт master.m3u8.
     - Загружает все файлы в хранилище (локальное или S3).
     - Обновляет модель Video.
+    - Удаляет исходный файл после успешной обработки.
     """
     video = Video.objects.get(id=video_id)
-    
+
     # Проверка: если уже обработано, выходим
     if video.is_processed:
         logger.info(f"Video {video_id} уже обработано, пропускаем.")
@@ -94,12 +95,10 @@ def process_video_to_hls(self, video_id: int):
 
         # 6. Обновляем модель Video
         master_remote_path = remote_base + "master.m3u8"
-        # Используем подписанные URL только для S3, для локального хранилища подпись не нужна
         signed = getattr(settings, 'USE_S3', False)
         master_url = storage.get_url(master_remote_path, signed=signed)
         video.hls_master_playlist = master_url
 
-        # Сохраняем URL для каждого профиля
         profile_urls = {}
         for profile in profiles:
             variant_remote = remote_base + f"out_{profile['name']}.m3u8"
@@ -110,6 +109,17 @@ def process_video_to_hls(self, video_id: int):
         video.processing_error = ""
         video.save(update_fields=["hls_master_playlist", "hls_profiles", "is_processed", "processing_error"])
 
+        # 7. Удаляем исходный файл, так как он больше не нужен
+        if video.file:
+            try:
+                # Удаляем физический файл из хранилища
+                video.file.delete(save=False)
+                video.file = None
+                video.save(update_fields=['file'])
+                logger.info(f"Исходный файл удалён для видео {video_id}")
+            except Exception as e:
+                logger.warning(f"Не удалось удалить исходный файл для видео {video_id}: {e}")
+
         logger.info(f"Видео {video_id} успешно обработано. Master playlist: {master_url}")
 
     except Exception as e:
@@ -117,7 +127,6 @@ def process_video_to_hls(self, video_id: int):
         video.is_processed = False
         video.processing_error = str(e)
         video.save(update_fields=["is_processed", "processing_error"])
-        # Повторный запуск задачи (с задержкой)
         raise self.retry(exc=e)
 
     finally:
