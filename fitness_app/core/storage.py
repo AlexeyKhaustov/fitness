@@ -69,7 +69,7 @@ class LocalVideoStorage(VideoStorageInterface):
 
     def get_url(self, remote_path: str, signed: bool = False, expires: int = 3600) -> str:
         # Для локального хранилища подпись не нужна
-        return settings.MEDIA_URL + "videos/" + remote_path
+        return f"videos/{remote_path}"
 
     def delete(self, remote_path: str) -> None:
         path = os.path.join(self.base_path, remote_path)
