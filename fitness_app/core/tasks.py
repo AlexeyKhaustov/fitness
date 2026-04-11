@@ -1,4 +1,5 @@
-# core/tasks.py
+# fitness_app/core/tasks.py
+
 import os
 import shutil
 import tempfile
@@ -41,17 +42,26 @@ def process_video_to_hls(self, video_id: int):
     local_input = os.path.join(temp_dir.name, "input.mp4")
 
     try:
-        # 1. Получаем исходный файл (сейчас он локальный, но в будущем может быть в S3)
-        # Предполагаем, что video.file — это локальный FileField (пока не переведён на S3)
+        # 1. Получаем исходный файл (поддерживает локальные пути и S3)
         if not video.file:
             raise ValueError(f"Видео {video_id} не имеет файла")
-        original_path = video.file.path
-        if not os.path.exists(original_path):
-            raise FileNotFoundError(f"Исходный файл не найден: {original_path}")
 
-        # Копируем во временную папку, чтобы не трогать оригинал
-        shutil.copy2(original_path, local_input)
-        logger.info(f"Исходный файл скопирован во временную папку: {local_input}")
+        # Пытаемся получить локальный путь, если хранилище поддерживает
+        try:
+            original_path = video.file.path
+            if not os.path.exists(original_path):
+                raise FileNotFoundError(f"Исходный файл не найден: {original_path}")
+            # Копируем во временную папку
+            shutil.copy2(original_path, local_input)
+            logger.info(f"Исходный файл скопирован из локального пути: {original_path}")
+        except (NotImplementedError, AttributeError, FileNotFoundError) as e:
+            # Если хранилище не поддерживает path (S3) или файл не найден локально,
+            # скачиваем его во временную папку
+            logger.info(f"Скачивание файла из хранилища: {video.file.name} (причина: {e})")
+            with video.file.storage.open(video.file.name, 'rb') as f:
+                with open(local_input, 'wb') as out:
+                    out.write(f.read())
+            logger.info(f"Файл скачан во временную папку: {local_input}")
 
         # 2. Определяем разрешение и фильтруем профили
         width, height = get_video_resolution(local_input)
@@ -84,16 +94,16 @@ def process_video_to_hls(self, video_id: int):
 
         # 6. Обновляем модель Video
         master_remote_path = remote_base + "master.m3u8"
-        # Пока используем неподписанные URL (для локального хранилища) или подписанные (S3)
-        # Для простоты оставим signed=False, позже добавим генерацию на лету
-        master_url = storage.get_url(master_remote_path, signed=False)
+        # Используем подписанные URL только для S3, для локального хранилища подпись не нужна
+        signed = (settings.VIDEO_STORAGE_BACKEND == 's3')
+        master_url = storage.get_url(master_remote_path, signed=signed)
         video.hls_master_playlist = master_url
 
         # Сохраняем URL для каждого профиля
         profile_urls = {}
         for profile in profiles:
             variant_remote = remote_base + f"out_{profile['name']}.m3u8"
-            profile_urls[profile["name"]] = storage.get_url(variant_remote, signed=False)
+            profile_urls[profile["name"]] = storage.get_url(variant_remote, signed=signed)
         video.hls_profiles = profile_urls
 
         video.is_processed = True
@@ -107,7 +117,7 @@ def process_video_to_hls(self, video_id: int):
         video.is_processed = False
         video.processing_error = str(e)
         video.save(update_fields=["is_processed", "processing_error"])
-        # Повторный запуск задачи
+        # Повторный запуск задачи (с задержкой)
         raise self.retry(exc=e)
 
     finally:

@@ -96,7 +96,7 @@ class Video(models.Model):
     title = models.CharField('Название', max_length=100)
     file = models.FileField(
         'Файл',
-        upload_to='videos/%Y/%m/',
+        upload_to='/%Y/%m/',
         storage=storages['private_video'],
         max_length=500,
     )
