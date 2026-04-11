@@ -30,8 +30,8 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 @admin.register(Video)
 class VideoAdmin(admin.ModelAdmin):
-    list_display = ('title', 'is_free', 'views', 'allow_comments', 'allow_likes', 'created_at')
-    list_filter = ('is_free', 'allow_comments', 'allow_likes', 'categories')
+    list_display = ('title', 'is_free', 'views', 'allow_comments', 'allow_likes', 'created_at', 'is_processed')
+    list_filter = ('is_free', 'allow_comments', 'allow_likes', 'categories', 'is_processed')
     list_editable = ('is_free', 'allow_comments', 'allow_likes')
     search_fields = ('title', 'description')
     filter_horizontal = ('categories',)
@@ -51,6 +51,10 @@ class VideoAdmin(admin.ModelAdmin):
         }),
         ('Статистика', {
             'fields': ('views', 'created_at'),
+            'classes': ('collapse',)
+        }),
+        ('HLS обработка', {
+            'fields': ('is_processed', 'processing_error', 'hls_master_playlist'),
             'classes': ('collapse',)
         }),
     )

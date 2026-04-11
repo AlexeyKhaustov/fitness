@@ -334,7 +334,7 @@ if USE_S3:
                 "default_acl": "private",
                 "querystring_auth": True,
                 "querystring_expire": 3600,
-                "location": "videos",
+                "location": "",
             },
         },
     }
