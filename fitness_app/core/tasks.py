@@ -31,7 +31,7 @@ def process_video_to_hls(self, video_id: int):
     - Обновляет модель Video.
     """
     video = Video.objects.get(id=video_id)
-
+    
     # Проверка: если уже обработано, выходим
     if video.is_processed:
         logger.info(f"Video {video_id} уже обработано, пропускаем.")
@@ -81,7 +81,7 @@ def process_video_to_hls(self, video_id: int):
         master_path = create_master_playlist(temp_dir.name, profiles, variant_files)
 
         # 5. Загружаем все сгенерированные файлы в хранилище
-        remote_base = f"videos/{video_id}/hls/"
+        remote_base = f"{video_id}/hls/"
         uploaded_files = []
         for root, dirs, files in os.walk(temp_dir.name):
             for file in files:
