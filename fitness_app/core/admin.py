@@ -30,7 +30,7 @@ class UserProfileAdmin(admin.ModelAdmin):
 
 @admin.register(Video)
 class VideoAdmin(admin.ModelAdmin):
-    list_display = ('title', 'is_free', 'views', 'allow_comments', 'allow_likes', 'created_at', 'is_processed')
+    list_display = ('id', 'title', 'is_free', 'views', 'allow_comments', 'allow_likes', 'created_at', 'is_processed')
     list_filter = ('is_free', 'allow_comments', 'allow_likes', 'categories', 'is_processed')
     list_editable = ('is_free', 'allow_comments', 'allow_likes')
     search_fields = ('title', 'description')

@@ -95,7 +95,7 @@ def process_video_to_hls(self, video_id: int):
         # 6. Обновляем модель Video
         master_remote_path = remote_base + "master.m3u8"
         # Используем подписанные URL только для S3, для локального хранилища подпись не нужна
-        signed = (settings.VIDEO_STORAGE_BACKEND == 's3')
+        signed = getattr(settings, 'USE_S3', False)
         master_url = storage.get_url(master_remote_path, signed=signed)
         video.hls_master_playlist = master_url
 
