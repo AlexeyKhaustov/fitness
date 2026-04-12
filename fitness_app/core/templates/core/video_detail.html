@@ -84,36 +84,29 @@
                     {% else %}
                         <!-- ОТКРЫТОЕ ВИДЕО -->
                         <div class="aspect-video">
-                            {% if video.is_processed and video.hls_master_playlist %}
-                                <video id="my-video" class="w-full h-full" controls></video>
-                                <script>
-                                    const videoElement = document.getElementById('my-video');
-                                    const streamUrl = '{{ MEDIA_URL }}{{ video.hls_master_playlist }}';
-                                    console.log('{{ MEDIA_URL }}{{ video.hls_master_playlist }}');  // для отладки
-                                    console.log('Stream URL:', streamUrl);  // для отладки
-                                    if (Hls.isSupported()) {
-                                        const hls = new Hls();
-                                        hls.loadSource(streamUrl);
-                                        hls.attachMedia(videoElement);
-                                    } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-                                        videoElement.src = streamUrl;
-                                    }
-                                </script>
-                            {% elif not video.is_processed %}
-                                <div class="bg-gray-800 rounded-2xl p-8 text-center">
-                                    <i class="fa-solid fa-spinner fa-spin text-4xl text-purple-400 mb-4"></i>
-                                    <p class="text-gray-300">Видео обрабатывается. Пожалуйста, обновите страницу позже.</p>
-                                </div>
-                            {% elif signed_file_url %}
-                                <video controls class="w-full h-full">
-                                    <source src="{{ signed_file_url }}" type="video/mp4">
-                                </video>
-                            {% else %}
-                                <div class="bg-gray-800 rounded-2xl p-8 text-center">
-                                    <i class="fa-solid fa-exclamation-triangle text-4xl text-yellow-400 mb-4"></i>
-                                    <p class="text-gray-300">Видео временно недоступно. Попробуйте позже.</p>
-                                </div>
-                            {% endif %}
+                        {% if video.is_processed and video.hls_master_playlist %}
+                            <video id="my-video" class="w-full h-full" controls></video>
+                            <script>
+                                const videoElement = document.getElementById('my-video');
+                                let rawUrl = '{{ video.hls_master_playlist|safe }}';
+                                let streamUrl;
+                                // Если URL уже абсолютный (http:// или https://), используем как есть
+                                if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+                                    streamUrl = rawUrl;
+                                } else {
+                                    // Иначе добавляем MEDIA_URL (для локальных файлов)
+                                    streamUrl = '{{ MEDIA_URL }}' + rawUrl;
+                                }
+                                console.log('Stream URL:', streamUrl);
+                                if (Hls.isSupported()) {
+                                    const hls = new Hls();
+                                    hls.loadSource(streamUrl);
+                                    hls.attachMedia(videoElement);
+                                } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                                    videoElement.src = streamUrl;
+                                }
+                            </script>
+                        {% endif %}
                         </div>
                     {% endif %}
                 </div>

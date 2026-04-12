@@ -12,44 +12,29 @@ from typing import Optional
 
 from django.conf import settings
 from storages.backends.s3boto3 import S3Boto3Storage
-from decouple import config
 
 logger = logging.getLogger(__name__)
 
 
 class VideoStorageInterface(ABC):
-    """Интерфейс для работы с хранилищем видео."""
-
     @abstractmethod
     def save(self, local_path: str, remote_path: str) -> str:
-        """
-        Сохраняет файл из локальной файловой системы в хранилище.
-        Возвращает публичный URL сохранённого файла.
-        """
         pass
 
     @abstractmethod
     def load(self, remote_path: str, local_path: str) -> None:
-        """Загружает файл из хранилища в локальную временную папку."""
         pass
 
     @abstractmethod
     def get_url(self, remote_path: str, signed: bool = False, expires: int = 3600) -> str:
-        """
-        Возвращает URL файла в хранилище.
-        Если signed=True, генерирует временную подписанную ссылку.
-        """
         pass
 
     @abstractmethod
     def delete(self, remote_path: str) -> None:
-        """Удаляет файл из хранилища."""
         pass
 
 
 class LocalVideoStorage(VideoStorageInterface):
-    """Реализация для локальной файловой системы."""
-
     def __init__(self, base_path: Optional[str] = None):
         self.base_path = base_path or os.path.join(settings.MEDIA_ROOT, "videos")
         logger.info(f"LocalVideoStorage инициализирован с base_path={self.base_path}")
@@ -68,7 +53,6 @@ class LocalVideoStorage(VideoStorageInterface):
         logger.debug(f"Файл загружен: {src} -> {local_path}")
 
     def get_url(self, remote_path: str, signed: bool = False, expires: int = 3600) -> str:
-        # Для локального хранилища подпись не нужна
         return f"videos/{remote_path}"
 
     def delete(self, remote_path: str) -> None:
@@ -81,17 +65,19 @@ class LocalVideoStorage(VideoStorageInterface):
 
 
 class S3VideoStorage(VideoStorageInterface):
-    """Реализация для S3-совместимых облачных хранилищ (Cloud.ru, VK, Selectel)."""
-
     def __init__(self):
+        # Берём настройки из STORAGES['private_video'], чтобы гарантировать совпадение
+        opts = settings.STORAGES['private_video']['OPTIONS']
         self.storage = S3Boto3Storage(
-            bucket_name=config("AWS_STORAGE_BUCKET_NAME"),
-            endpoint_url=config("AWS_S3_ENDPOINT_URL"),
-            region_name=config("AWS_S3_REGION_NAME", default="ru-msk"),
-            default_acl="private",
-            querystring_auth=True,   # включаем подписанные URL
+            bucket_name=opts['bucket_name'],
+            endpoint_url=opts['endpoint_url'],
+            region_name=opts['region_name'],
+            access_key=opts['access_key'],
+            secret_key=opts['secret_key'],
+            default_acl=opts.get('default_acl', 'private'),
+            querystring_auth=opts.get('querystring_auth', True),
         )
-        logger.info("S3VideoStorage инициализирован")
+        logger.info("S3VideoStorage инициализирован из настроек STORAGES")
 
     def save(self, local_path: str, remote_path: str) -> str:
         with open(local_path, "rb") as f:
@@ -111,7 +97,6 @@ class S3VideoStorage(VideoStorageInterface):
         if signed:
             url = self.storage.url(remote_path, expire=expires)
         else:
-            # Прямой публичный URL (если бакет публичный, но мы используем private)
             url = self.storage.url(remote_path)
         logger.debug(f"Сгенерирован URL для {remote_path}, signed={signed}, expires={expires}")
         return url
@@ -122,10 +107,10 @@ class S3VideoStorage(VideoStorageInterface):
 
 
 def get_video_storage() -> VideoStorageInterface:
-    """Фабрика, возвращающая нужную реализацию хранилища в зависимости от настроек."""
-    backend = getattr(settings, "VIDEO_STORAGE_BACKEND", "local")
-    logger.info(f"Выбран бэкенд хранилища: {backend}")
-    if backend == "s3":
+    """Фабрика, возвращающая нужную реализацию хранилища в зависимости от USE_S3."""
+    use_s3 = getattr(settings, "USE_S3", False)
+    logger.info(f"Выбран бэкенд хранилища: {'S3' if use_s3 else 'local'}")
+    if use_s3:
         return S3VideoStorage()
     else:
         return LocalVideoStorage()

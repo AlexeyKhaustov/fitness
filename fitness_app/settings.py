@@ -242,7 +242,8 @@ LOGGING = {
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'formatter': 'json' if not DEBUG else 'verbose',
+            # 'formatter': 'json' if not DEBUG else 'verbose',
+            'formatter': 'verbose',
         },
         'file': {
             'class': 'logging.handlers.RotatingFileHandler',
