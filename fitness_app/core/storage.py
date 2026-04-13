@@ -57,6 +57,10 @@ class LocalVideoStorage(VideoStorageInterface):
     def get_url(self, remote_path: str, signed: bool = False, expires: int = 3600) -> str:
         return f"videos/{remote_path}"
 
+    def url(self, name: str, expire: Optional[int] = None) -> str:
+        """Алиас для get_url с signed=False (локальное хранилище)"""
+        return self.get_url(name, signed=False, expires=expire or 3600)
+
     def delete(self, remote_path: str) -> None:
         path = os.path.join(self.base_path, remote_path)
         if os.path.exists(path):
@@ -70,10 +74,8 @@ class GenericS3VideoStorage(VideoStorageInterface):
     """
     Универсальное S3-хранилище (для AWS, Selectel, VK Cloud и т.п.),
     использует стандартный S3Boto3Storage.
-    Теперь принимает **options для совместимости с STORAGES.
     """
     def __init__(self, **options):
-        # Если options не переданы, берём из настроек
         if not options:
             options = settings.STORAGES['private_video']['OPTIONS']
         self.storage = S3Boto3Storage(
@@ -109,6 +111,11 @@ class GenericS3VideoStorage(VideoStorageInterface):
         logger.debug(f"Сгенерирован URL для {remote_path}, signed={signed}, expires={expires}")
         return url
 
+    def url(self, name: str, expire: Optional[int] = None) -> str:
+        """Алиас для get_url с signed=True и expire из настроек или переданного значения"""
+        expire = expire or getattr(self.storage, 'querystring_expire', 3600)
+        return self.get_url(name, signed=True, expires=expire)
+
     def delete(self, remote_path: str) -> None:
         self.storage.delete(remote_path)
         logger.debug(f"Удалён файл из S3: {remote_path}")
@@ -121,7 +128,6 @@ class CloudRuS3VideoStorage(VideoStorageInterface):
     Учитывает path-style addressing и tenant_id в access_key.
     """
     def __init__(self, **options):
-        # Если options не переданы, берём из настроек
         if not options:
             options = settings.STORAGES['private_video']['OPTIONS']
         self.bucket_name = options['bucket_name']
@@ -140,7 +146,7 @@ class CloudRuS3VideoStorage(VideoStorageInterface):
             aws_access_key_id=self.access_key,
             aws_secret_access_key=self.secret_key,
             config=Config(
-                s3={'addressing_style': 'path'},      # Cloud.ru требует path-style
+                s3={'addressing_style': 'path'},
                 signature_version='s3v4',
             )
         )
@@ -178,6 +184,11 @@ class CloudRuS3VideoStorage(VideoStorageInterface):
         logger.debug(f"Сгенерирован подписанный URL для {remote_path}, expires={expires}")
         return url
 
+    def url(self, name: str, expire: Optional[int] = None) -> str:
+        """Алиас для get_url с signed=True и expire из настроек или переданного значения"""
+        expire = expire or self.querystring_expire
+        return self.get_url(name, signed=True, expires=expire)
+
     def delete(self, remote_path: str) -> None:
         self.client.delete_object(Bucket=self.bucket_name, Key=remote_path)
         logger.debug(f"Удалён файл из Cloud.ru S3: {remote_path}")
@@ -186,11 +197,6 @@ class CloudRuS3VideoStorage(VideoStorageInterface):
 def get_video_storage() -> VideoStorageInterface:
     """
     Фабрика, возвращающая нужную реализацию хранилища.
-    Логика:
-    - Если USE_S3=False -> LocalVideoStorage
-    - Если USE_S3=True:
-        - Если S3_PROVIDER='cloudru' -> CloudRuS3VideoStorage
-        - Иначе -> GenericS3VideoStorage
     """
     use_s3 = getattr(settings, "USE_S3", False)
     if not use_s3:
