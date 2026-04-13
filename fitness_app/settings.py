@@ -303,6 +303,9 @@ CELERY_TIMEZONE = TIME_ZONE
 # Тип S3-провайдера: 'generic' (по умолчанию) или 'cloudru'
 S3_PROVIDER = config('S3_PROVIDER', default='generic')
 
+# Для Cloud.ru требуется path-style addressing
+AWS_S3_ADDRESSING_STYLE = 'path'
+
 USE_S3 = config('USE_S3', default=False, cast=bool)
 
 if USE_S3:
