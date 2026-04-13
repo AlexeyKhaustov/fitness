@@ -67,7 +67,7 @@ class LocalVideoStorage(VideoStorageInterface):
         else:
             logger.warning(f"Файл не найден для удаления: {path}")
 
-    # Методы для совместимости с Django Storage API (не используются в задачах, но нужны для моделей)
+    # Методы для совместимости с Django Storage API
     def save(self, name, content, max_length=None):
         return name
 
@@ -153,7 +153,8 @@ class CloudRuS3VideoStorage(Storage, VideoStorageInterface):
         self.secret_key = options['secret_key']
         self.default_acl = options.get('default_acl', 'private')
         self.querystring_expire = options.get('querystring_expire', 3600)
-        self.location = options.get('location', '')
+        # location не используем, т.к. upload_to сам формирует путь
+        self.location = ''
 
         # Клиент для подписанных URL (path-style)
         self.client = boto3.client(
@@ -181,8 +182,7 @@ class CloudRuS3VideoStorage(Storage, VideoStorageInterface):
         logger.info(f"CloudRuS3VideoStorage инициализирован для бакета {self.bucket_name}")
 
     def _normalize_name(self, name):
-        if self.location:
-            return os.path.join(self.location, name)
+        """Не добавляем location, так как upload_to уже формирует полный путь"""
         return name
 
     # --- Методы VideoStorageInterface (для задач) ---
@@ -218,37 +218,29 @@ class CloudRuS3VideoStorage(Storage, VideoStorageInterface):
     # --- Методы Django Storage API ---
     def _save(self, name, content):
         """Django вызывает этот метод для сохранения файла из UploadedFile"""
-        name = self._normalize_name(name)
         return self._storage._save(name, content)
 
     def _open(self, name, mode='rb'):
-        name = self._normalize_name(name)
         return self._storage._open(name, mode)
 
     def url(self, name):
-        name = self._normalize_name(name)
         return self.get_signed_url(name, expires=self.querystring_expire)
 
     def exists(self, name):
-        name = self._normalize_name(name)
         return self._storage.exists(name)
 
     def delete(self, name):
-        name = self._normalize_name(name)
         self._storage.delete(name)
 
     def size(self, name):
-        name = self._normalize_name(name)
         return self._storage.size(name)
 
     def get_available_name(self, name, max_length=None):
-        name = self._normalize_name(name)
         return self._storage.get_available_name(name, max_length)
 
     def generate_filename(self, filename):
         return self._storage.generate_filename(filename)
 
-    # Для совместимости с общим интерфейсом (необязательно)
     def save(self, name, content, max_length=None):
         return self._save(name, content)
 

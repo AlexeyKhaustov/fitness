@@ -305,9 +305,6 @@ CELERY_TIMEZONE = TIME_ZONE
 # Тип S3-провайдера: 'generic' (по умолчанию) или 'cloudru'
 S3_PROVIDER = config('S3_PROVIDER', default='generic')
 
-# Для Cloud.ru требуется path-style addressing
-AWS_S3_ADDRESSING_STYLE = 'path'
-
 USE_S3 = config('USE_S3', default=False, cast=bool)
 
 if USE_S3:
@@ -325,7 +322,7 @@ if USE_S3:
         "default_acl": "private",
         "querystring_auth": True,
         "querystring_expire": 3600,
-        "location": "videos",
+        # "location": "videos",
     }
 
     # Выбираем бэкенд в зависимости от S3_PROVIDER
@@ -333,6 +330,9 @@ if USE_S3:
         PRIVATE_VIDEO_BACKEND = 'fitness_app.core.storage.CloudRuS3VideoStorage'
     else:
         PRIVATE_VIDEO_BACKEND = 'fitness_app.core.storage.GenericS3VideoStorage'
+
+    # Для Cloud.ru требуется path-style addressing, ДО STORAGES
+    AWS_S3_ADDRESSING_STYLE = 'path'
 
     STORAGES = {
         "default": {
