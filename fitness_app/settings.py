@@ -300,6 +300,9 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 
 # ---------- S3 Конфигурация ----------
+# Тип S3-провайдера: 'generic' (по умолчанию) или 'cloudru'
+S3_PROVIDER = config('S3_PROVIDER', default='generic')
+
 USE_S3 = config('USE_S3', default=False, cast=bool)
 
 if USE_S3:
@@ -307,16 +310,26 @@ if USE_S3:
     access_key_id = config('AWS_ACCESS_KEY_ID')
     full_access_key = f"{tenant_id}:{access_key_id}"
 
+    # Общие параметры для любого S3-хранилища
     COMMON_S3_OPTIONS = {
         "access_key": full_access_key,
         "secret_key": config('AWS_SECRET_ACCESS_KEY'),
         "bucket_name": config('AWS_STORAGE_BUCKET_NAME'),
         "endpoint_url": config('AWS_S3_ENDPOINT_URL'),
         "region_name": config('AWS_S3_REGION_NAME'),
+        "default_acl": "private",
+        "querystring_auth": True,
+        "querystring_expire": 3600,
+        "location": "videos",
     }
 
+    # Выбираем бэкенд в зависимости от S3_PROVIDER
+    if S3_PROVIDER == 'cloudru':
+        PRIVATE_VIDEO_BACKEND = 'fitness_app.core.storage.CloudRuS3VideoStorage'
+    else:
+        PRIVATE_VIDEO_BACKEND = 'fitness_app.core.storage.GenericS3VideoStorage'
+
     STORAGES = {
-        # Обычные медиа (картинки, аватарки) — пока оставляем локально
         "default": {
             "BACKEND": "django.core.files.storage.FileSystemStorage",
             "OPTIONS": {
@@ -324,20 +337,12 @@ if USE_S3:
                 "base_url": "/media/",
             },
         },
-        # Статика — локально (через Nginx)
         "staticfiles": {
             "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
         },
-        # Видео — в S3 с подписанными URL
         "private_video": {
-            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-            "OPTIONS": {
-                **COMMON_S3_OPTIONS,
-                "default_acl": "private",
-                "querystring_auth": True,
-                "querystring_expire": 3600,
-                "location": "videos",
-            },
+            "BACKEND": PRIVATE_VIDEO_BACKEND,
+            "OPTIONS": COMMON_S3_OPTIONS,
         },
     }
 else:
