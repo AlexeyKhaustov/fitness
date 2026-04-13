@@ -1,7 +1,7 @@
 # fitness_app/core/storage.py
 """
 Абстракция хранилища для видеофайлов.
-Поддерживает локальное хранилище и S3 (общий случай + Cloud.ru).
+Поддерживает локальное хранилище, generic S3 и Cloud.ru S3.
 """
 
 import os
@@ -70,19 +70,22 @@ class GenericS3VideoStorage(VideoStorageInterface):
     """
     Универсальное S3-хранилище (для AWS, Selectel, VK Cloud и т.п.),
     использует стандартный S3Boto3Storage.
+    Теперь принимает **options для совместимости с STORAGES.
     """
-    def __init__(self):
-        opts = settings.STORAGES['private_video']['OPTIONS']
+    def __init__(self, **options):
+        # Если options не переданы, берём из настроек
+        if not options:
+            options = settings.STORAGES['private_video']['OPTIONS']
         self.storage = S3Boto3Storage(
-            bucket_name=opts['bucket_name'],
-            endpoint_url=opts['endpoint_url'],
-            region_name=opts['region_name'],
-            access_key=opts['access_key'],
-            secret_key=opts['secret_key'],
-            default_acl=opts.get('default_acl', 'private'),
-            querystring_auth=opts.get('querystring_auth', True),
+            bucket_name=options['bucket_name'],
+            endpoint_url=options['endpoint_url'],
+            region_name=options['region_name'],
+            access_key=options['access_key'],
+            secret_key=options['secret_key'],
+            default_acl=options.get('default_acl', 'private'),
+            querystring_auth=options.get('querystring_auth', True),
         )
-        logger.info("GenericS3VideoStorage инициализирован из настроек STORAGES")
+        logger.info("GenericS3VideoStorage инициализирован")
 
     def save(self, local_path: str, remote_path: str) -> str:
         with open(local_path, "rb") as f:
@@ -114,20 +117,20 @@ class GenericS3VideoStorage(VideoStorageInterface):
 class CloudRuS3VideoStorage(VideoStorageInterface):
     """
     Специализированное хранилище для Cloud.ru Object Storage.
-    Учитывает:
-    - path-style addressing (обязательно)
-    - tenant_id в access_key (формат tenant:key)
-    - корректную генерацию подписанных URL через boto3 напрямую
+    Принимает **options для совместимости с STORAGES.
+    Учитывает path-style addressing и tenant_id в access_key.
     """
-    def __init__(self):
-        opts = settings.STORAGES['private_video']['OPTIONS']
-        self.bucket_name = opts['bucket_name']
-        self.endpoint_url = opts['endpoint_url']
-        self.region_name = opts['region_name']
-        self.access_key = opts['access_key']          # уже в формате tenant:key
-        self.secret_key = opts['secret_key']
-        self.default_acl = opts.get('default_acl', 'private')
-        self.querystring_expire = opts.get('querystring_expire', 3600)
+    def __init__(self, **options):
+        # Если options не переданы, берём из настроек
+        if not options:
+            options = settings.STORAGES['private_video']['OPTIONS']
+        self.bucket_name = options['bucket_name']
+        self.endpoint_url = options['endpoint_url']
+        self.region_name = options['region_name']
+        self.access_key = options['access_key']
+        self.secret_key = options['secret_key']
+        self.default_acl = options.get('default_acl', 'private')
+        self.querystring_expire = options.get('querystring_expire', 3600)
 
         # Создаём низкоуровневый клиент boto3 с правильной конфигурацией
         self.client = boto3.client(
@@ -144,7 +147,6 @@ class CloudRuS3VideoStorage(VideoStorageInterface):
         logger.info(f"CloudRuS3VideoStorage инициализирован для бакета {self.bucket_name}")
 
     def save(self, local_path: str, remote_path: str) -> str:
-        """Загружает файл в бакет, устанавливая ACL private (по умолчанию)."""
         extra_args = {'ACL': self.default_acl} if self.default_acl else {}
         with open(local_path, 'rb') as f:
             self.client.put_object(
@@ -153,28 +155,19 @@ class CloudRuS3VideoStorage(VideoStorageInterface):
                 Body=f,
                 **extra_args
             )
-        # Возвращаем подписанный URL (можно и без подписи, но для единообразия)
         url = self.get_url(remote_path, signed=True, expires=self.querystring_expire)
         logger.debug(f"Файл загружен в Cloud.ru S3: {local_path} -> {remote_path}, URL={url}")
         return url
 
     def load(self, remote_path: str, local_path: str) -> None:
-        """Скачивает файл из бакета во временную папку."""
         response = self.client.get_object(Bucket=self.bucket_name, Key=remote_path)
         with open(local_path, 'wb') as f:
             f.write(response['Body'].read())
         logger.debug(f"Файл загружен из Cloud.ru S3: {remote_path} -> {local_path}")
 
     def get_url(self, remote_path: str, signed: bool = True, expires: int = 3600) -> str:
-        """
-        Генерирует подписанный URL для доступа к объекту.
-        Если signed=False — возвращает публичную ссылку (но объект приватный, так что не будет работать).
-        Для Cloud.ru всегда используем signed=True.
-        """
         if not signed:
-            # Публичная ссылка (если объект public-read, но у нас private)
             return f"{self.endpoint_url}/{self.bucket_name}/{remote_path}"
-
         expires = expires or self.querystring_expire
         url = self.client.generate_presigned_url(
             ClientMethod='get_object',
@@ -186,7 +179,6 @@ class CloudRuS3VideoStorage(VideoStorageInterface):
         return url
 
     def delete(self, remote_path: str) -> None:
-        """Удаляет объект из бакета."""
         self.client.delete_object(Bucket=self.bucket_name, Key=remote_path)
         logger.debug(f"Удалён файл из Cloud.ru S3: {remote_path}")
 
@@ -198,7 +190,7 @@ def get_video_storage() -> VideoStorageInterface:
     - Если USE_S3=False -> LocalVideoStorage
     - Если USE_S3=True:
         - Если S3_PROVIDER='cloudru' -> CloudRuS3VideoStorage
-        - Иначе -> GenericS3VideoStorage (для обратной совместимости)
+        - Иначе -> GenericS3VideoStorage
     """
     use_s3 = getattr(settings, "USE_S3", False)
     if not use_s3:
