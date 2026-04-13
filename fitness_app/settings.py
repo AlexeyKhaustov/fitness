@@ -1,3 +1,5 @@
+# fitness_app/settings.py
+
 import os
 from pythonjsonlogger import jsonlogger
 from pathlib import Path
