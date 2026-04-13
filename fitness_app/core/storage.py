@@ -58,7 +58,7 @@ class LocalVideoStorage(VideoStorageInterface):
         return f"videos/{remote_path}"
 
     def url(self, name: str, expire: Optional[int] = None) -> str:
-        """Алиас для get_url с signed=False (локальное хранилище)"""
+        """Для совместимости с Django Storage API"""
         return self.get_url(name, signed=False, expires=expire or 3600)
 
     def delete(self, remote_path: str) -> None:
@@ -68,6 +68,15 @@ class LocalVideoStorage(VideoStorageInterface):
             logger.debug(f"Удалён файл: {path}")
         else:
             logger.warning(f"Файл не найден для удаления: {path}")
+
+    # Методы, требуемые Django для FileField
+    def generate_filename(self, filename: str) -> str:
+        """Генерирует имя файла (просто возвращает как есть)"""
+        return filename
+
+    def get_available_name(self, name: str, max_length: Optional[int] = None) -> str:
+        """Возвращает доступное имя (упрощённо)"""
+        return name
 
 
 class GenericS3VideoStorage(VideoStorageInterface):
@@ -112,7 +121,7 @@ class GenericS3VideoStorage(VideoStorageInterface):
         return url
 
     def url(self, name: str, expire: Optional[int] = None) -> str:
-        """Алиас для get_url с signed=True и expire из настроек или переданного значения"""
+        """Для совместимости с Django Storage API"""
         expire = expire or getattr(self.storage, 'querystring_expire', 3600)
         return self.get_url(name, signed=True, expires=expire)
 
@@ -120,12 +129,19 @@ class GenericS3VideoStorage(VideoStorageInterface):
         self.storage.delete(remote_path)
         logger.debug(f"Удалён файл из S3: {remote_path}")
 
+    # Методы, требуемые Django для FileField
+    def generate_filename(self, filename: str) -> str:
+        return self.storage.generate_filename(filename)
+
+    def get_available_name(self, name: str, max_length: Optional[int] = None) -> str:
+        return self.storage.get_available_name(name, max_length)
+
 
 class CloudRuS3VideoStorage(VideoStorageInterface):
     """
     Специализированное хранилище для Cloud.ru Object Storage.
-    Принимает **options для совместимости с STORAGES.
-    Учитывает path-style addressing и tenant_id в access_key.
+    Реализует интерфейс VideoStorageInterface и дополнительно методы,
+    необходимые Django для работы с FileField.
     """
     def __init__(self, **options):
         if not options:
@@ -138,7 +154,7 @@ class CloudRuS3VideoStorage(VideoStorageInterface):
         self.default_acl = options.get('default_acl', 'private')
         self.querystring_expire = options.get('querystring_expire', 3600)
 
-        # Создаём низкоуровневый клиент boto3 с правильной конфигурацией
+        # Создаём низкоуровневый клиент boto3 для подписанных URL
         self.client = boto3.client(
             's3',
             endpoint_url=self.endpoint_url,
@@ -150,28 +166,40 @@ class CloudRuS3VideoStorage(VideoStorageInterface):
                 signature_version='s3v4',
             )
         )
+
+        # Для стандартных операций (save, delete, open) используем S3Boto3Storage
+        # с теми же параметрами, но с path-style
+        self._storage = S3Boto3Storage(
+            bucket_name=self.bucket_name,
+            endpoint_url=self.endpoint_url,
+            region_name=self.region_name,
+            access_key=self.access_key,
+            secret_key=self.secret_key,
+            default_acl=self.default_acl,
+            querystring_auth=False,  # подписи не нужны, т.к. мы генерируем сами
+            config=Config(s3={'addressing_style': 'path'})
+        )
         logger.info(f"CloudRuS3VideoStorage инициализирован для бакета {self.bucket_name}")
 
+    # --- Методы для VideoStorageInterface ---
     def save(self, local_path: str, remote_path: str) -> str:
-        extra_args = {'ACL': self.default_acl} if self.default_acl else {}
+        """Загружает файл из локального пути в S3"""
         with open(local_path, 'rb') as f:
-            self.client.put_object(
-                Bucket=self.bucket_name,
-                Key=remote_path,
-                Body=f,
-                **extra_args
-            )
+            self._storage.save(remote_path, f)
         url = self.get_url(remote_path, signed=True, expires=self.querystring_expire)
         logger.debug(f"Файл загружен в Cloud.ru S3: {local_path} -> {remote_path}, URL={url}")
         return url
 
     def load(self, remote_path: str, local_path: str) -> None:
-        response = self.client.get_object(Bucket=self.bucket_name, Key=remote_path)
+        """Скачивает файл из S3 в локальный путь"""
+        with self._storage.open(remote_path, 'rb') as f:
+            content = f.read()
         with open(local_path, 'wb') as f:
-            f.write(response['Body'].read())
+            f.write(content)
         logger.debug(f"Файл загружен из Cloud.ru S3: {remote_path} -> {local_path}")
 
     def get_url(self, remote_path: str, signed: bool = True, expires: int = 3600) -> str:
+        """Генерирует URL (подписанный или публичный)"""
         if not signed:
             return f"{self.endpoint_url}/{self.bucket_name}/{remote_path}"
         expires = expires or self.querystring_expire
@@ -184,14 +212,36 @@ class CloudRuS3VideoStorage(VideoStorageInterface):
         logger.debug(f"Сгенерирован подписанный URL для {remote_path}, expires={expires}")
         return url
 
+    def delete(self, remote_path: str) -> None:
+        """Удаляет объект из бакета"""
+        self._storage.delete(remote_path)
+        logger.debug(f"Удалён файл из Cloud.ru S3: {remote_path}")
+
+    # --- Методы, требуемые Django для FileField ---
     def url(self, name: str, expire: Optional[int] = None) -> str:
-        """Алиас для get_url с signed=True и expire из настроек или переданного значения"""
+        """Django вызывает этот метод для получения URL файла"""
         expire = expire or self.querystring_expire
         return self.get_url(name, signed=True, expires=expire)
 
-    def delete(self, remote_path: str) -> None:
-        self.client.delete_object(Bucket=self.bucket_name, Key=remote_path)
-        logger.debug(f"Удалён файл из Cloud.ru S3: {remote_path}")
+    def generate_filename(self, filename: str) -> str:
+        """Django требует этот метод для генерации имени файла"""
+        return self._storage.generate_filename(filename)
+
+    def get_available_name(self, name: str, max_length: Optional[int] = None) -> str:
+        """Возвращает доступное имя файла (избегает конфликтов)"""
+        return self._storage.get_available_name(name, max_length)
+
+    def open(self, name: str, mode='rb'):
+        """Открывает файл для чтения (нужно для Django)"""
+        return self._storage.open(name, mode)
+
+    def exists(self, name: str) -> bool:
+        """Проверяет существование файла"""
+        return self._storage.exists(name)
+
+    def size(self, name: str) -> int:
+        """Возвращает размер файла"""
+        return self._storage.size(name)
 
 
 def get_video_storage() -> VideoStorageInterface:
