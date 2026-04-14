@@ -1,7 +1,6 @@
 # fitness_app/core/tasks.py
 
 import os
-import re
 import shutil
 import tempfile
 import logging
@@ -106,7 +105,7 @@ def process_video_to_hls(self, video_id: int):
                 else:
                     # Это ссылка на сегмент, например "out_1080p_000.ts"
                     segment_remote = remote_base + line.strip()
-                    signed_segment_url = storage.get_signed_url(segment_remote, expires=3600)
+                    signed_segment_url = storage.get_signed_url(segment_remote, expires=settings.AWS_QUERYSTRING_EXPIRE)
                     new_lines.append(signed_segment_url)
 
             new_variant_content = "\n".join(new_lines)
@@ -118,11 +117,11 @@ def process_video_to_hls(self, video_id: int):
             logger.info(f"Вариантный плейлист {profile['name']} перезаписан с подписанными URL сегментов")
 
         # 8. Генерируем подписанные URL для мастер-плейлиста и вариантов (после перезаписи)
-        master_signed_url = storage.get_signed_url(master_remote_path, expires=3600)
+        master_signed_url = storage.get_signed_url(master_remote_path, expires=settings.AWS_QUERYSTRING_EXPIRE)
         variant_signed_urls = {}
         for profile in profiles:
             variant_signed_urls[profile['name']] = storage.get_signed_url(
-                variant_remote_paths[profile['name']], expires=3600
+                variant_remote_paths[profile['name']], expires=settings.AWS_QUERYSTRING_EXPIRE
             )
 
         # 9. Пересоздаём мастер-плейлист с полными подписанными URL на варианты
