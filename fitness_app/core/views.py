@@ -17,10 +17,10 @@ from django.http import HttpResponseForbidden, JsonResponse, HttpResponseBadRequ
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.core.mail import send_mail
-from django.core.files.storage import storages
 
 from .decorators import full_access_required
 from .forms import VideoCommentForm, ServiceRequestForm
+from .storage import get_video_storage
 from .models import (Category,
                      Marathon,
                      MarathonAccess,
@@ -123,38 +123,59 @@ class VideoDetailView(LoginRequiredMixin, DetailView):
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
+        """
+        Формирует контекст для страницы видео.
+        Генерирует свежую подписанную ссылку на HLS-мастер-плейлист,
+        если видео обработано, или на исходный MP4-файл.
+        """
         context = super().get_context_data(**kwargs)
         video = self.object
 
-        # HLS stream URL (если видео обработано)
-        context['hls_stream_url'] = video.hls_master_playlist if video.is_processed else None
-
-        # Подписанный URL для обычного видео (mp4) – для необработанных видео
-        if video.file and not video.is_processed:
-            private_storage = storages['private_video']
-            # Генерируем подписанную ссылку (если querystring_auth=True в настройках хранилища)
-            context['signed_file_url'] = private_storage.url(video.file.name)
-        else:
-            context['signed_file_url'] = None
-
-        # Если видео уже обработано в HLS, тоже подписываем мастер-плейлист
-        if video.is_processed and video.hls_master_playlist:
-            private_storage = storages['private_video']
-            # Предполагаем, что в hls_master_playlist хранится относительный путь (например, 'videos/123/hls/master.m3u8')
-            context['hls_stream_url'] = private_storage.url(video.hls_master_playlist)
+        # --- Динамическая генерация подписанной ссылки на HLS ---
+        if video.is_processed:
+            try:
+                # Получаем экземпляр хранилища (Cloud.ru S3 или локальное)
+                storage = get_video_storage()
+                # Путь к мастер-плейлисту в хранилище: {id}/hls/master.m3u8
+                master_remote_path = f"{video.id}/hls/master.m3u8"
+                # Генерируем подписанную ссылку с временем жизни из настроек
+                signed_url = storage.get_signed_url(
+                    master_remote_path,
+                    expires=settings.AWS_QUERYSTRING_EXPIRE
+                )
+                context['hls_stream_url'] = signed_url
+                logger.debug(f"Сгенерирована ссылка на HLS для видео {video.id}")
+            except Exception as e:
+                # Логируем ошибку, но не падаем — просто не отдаём ссылку
+                logger.error(f"Ошибка генерации подписанной ссылки для видео {video.id}: {e}")
+                context['hls_stream_url'] = None
         else:
             context['hls_stream_url'] = None
 
-        # Профиль пользователя
+        # --- Для необработанных видео (исходный MP4) ---
+        if video.file and not video.is_processed:
+            try:
+                storage = get_video_storage()
+                # video.file.name — относительный путь к файлу в бакете
+                signed_mp4_url = storage.get_signed_url(
+                    video.file.name,
+                    expires=settings.AWS_QUERYSTRING_EXPIRE
+                )
+                context['signed_file_url'] = signed_mp4_url
+            except Exception as e:
+                logger.error(f"Ошибка генерации подписанной ссылки для MP4 видео {video.id}: {e}")
+                context['signed_file_url'] = None
+        else:
+            context['signed_file_url'] = None
+
+        # --- Остальные данные контекста (без изменений) ---
         user_profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
         context['user_profile'] = user_profile
 
-        # Похожие видео
         context['similar_videos'] = Video.objects.filter(
             categories__in=video.categories.all()
         ).exclude(id=video.id).distinct()[:6]
 
-        # Комментарии и лайки (только для бесплатных видео)
         if video.is_free and video.allow_comments:
             from .forms import VideoCommentForm
             context['comment_form'] = VideoCommentForm()

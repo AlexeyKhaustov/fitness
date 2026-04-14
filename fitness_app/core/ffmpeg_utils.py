@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 # Лестница битрейтов и разрешений (от высшего к низшему)
 MASTER_BITRATE_LADDER: List[Dict] = [
-    {"name": "1080p", "width": 1920, "height": 1080, "video_bitrate": "4000k", "audio_bitrate": "128k"},
-    {"name": "720p",  "width": 1280, "height": 720,  "video_bitrate": "2500k", "audio_bitrate": "128k"},
+    # {"name": "1080p", "width": 1920, "height": 1080, "video_bitrate": "4000k", "audio_bitrate": "128k"},
+    # {"name": "720p",  "width": 1280, "height": 720,  "video_bitrate": "2500k", "audio_bitrate": "128k"},
     {"name": "480p",  "width": 854,  "height": 480,  "video_bitrate": "1500k", "audio_bitrate": "96k"},
     {"name": "360p",  "width": 640,  "height": 360,  "video_bitrate": "800k",  "audio_bitrate": "64k"},
 ]

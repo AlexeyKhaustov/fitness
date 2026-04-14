@@ -306,6 +306,7 @@ CELERY_TIMEZONE = TIME_ZONE
 S3_PROVIDER = config('S3_PROVIDER', default='generic')
 
 USE_S3 = config('USE_S3', default=False, cast=bool)
+AWS_QUERYSTRING_EXPIRE = 604800
 
 if USE_S3:
     tenant_id = config('AWS_TENANT_ID')
@@ -321,7 +322,7 @@ if USE_S3:
         "region_name": config('AWS_S3_REGION_NAME'),
         "default_acl": "private",
         "querystring_auth": True,
-        "querystring_expire": 3600,
+        "querystring_expire": AWS_QUERYSTRING_EXPIRE,
         # "location": "videos",
     }
 
