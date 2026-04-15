@@ -1,3 +1,5 @@
+# fitness_app/core/models.py
+
 import os
 import shutil
 import logging
@@ -146,6 +148,12 @@ class Video(models.Model):
         blank=True,
         null=True,
         help_text="Текст ошибки, если обработка не удалась"
+    )
+    hls_links_refreshed_at = models.DateTimeField(
+        "Дата последнего обновления подписанных ссылок",
+        null=True,
+        blank=True,
+        help_text="Используется для автоматического обновления ссылок при просмотре"
     )
 
     class Meta:

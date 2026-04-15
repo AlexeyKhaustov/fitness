@@ -2,6 +2,7 @@ import uuid
 import logging
 import json
 from decouple import config
+from django.utils import timezone
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -18,6 +19,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.core.mail import send_mail
 
+from .tasks import refresh_video_links
 from .decorators import full_access_required
 from .forms import VideoCommentForm, ServiceRequestForm
 from .storage import get_video_storage
@@ -123,52 +125,46 @@ class VideoDetailView(LoginRequiredMixin, DetailView):
         return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
-        """
-        Формирует контекст для страницы видео.
-        Генерирует свежую подписанную ссылку на HLS-мастер-плейлист,
-        если видео обработано, или на исходный MP4-файл.
-        """
         context = super().get_context_data(**kwargs)
         video = self.object
 
-        # --- Динамическая генерация подписанной ссылки на HLS ---
+        # --- Проверка и обновление ссылок, если они устарели ---
+        if video.is_processed:
+            need_refresh = False
+            if not video.hls_links_refreshed_at:
+                need_refresh = True
+            else:
+                # Обновляем, если прошло более 5 дней (или другого значения)
+                days_since_refresh = (timezone.now() - video.hls_links_refreshed_at).days
+                if days_since_refresh >= 5:   # 5 дней — запас до 7-дневного TTL
+                    need_refresh = True
+
+            if need_refresh:
+                logger.info(f"Ссылки для видео {video.id} устарели (последнее обновление: {video.hls_links_refreshed_at}), запускаем перегенерацию.")
+                success = refresh_video_links(video.id)
+                if not success:
+                    logger.error(f"Не удалось обновить ссылки для видео {video.id}, продолжаем со старыми.")
+                else:
+                    # Перечитаем видео из БД, так как поля обновились
+                    video.refresh_from_db()
+
+        # --- Динамическая генерация подписанной ссылки на мастер-плейлист ---
         if video.is_processed:
             try:
-                # Получаем экземпляр хранилища (Cloud.ru S3 или локальное)
                 storage = get_video_storage()
-                # Путь к мастер-плейлисту в хранилище: {id}/hls/master.m3u8
                 master_remote_path = f"{video.id}/hls/master.m3u8"
-                # Генерируем подписанную ссылку с временем жизни из настроек
-                signed_url = storage.get_signed_url(
+                context['hls_stream_url'] = storage.get_signed_url(
                     master_remote_path,
                     expires=settings.AWS_QUERYSTRING_EXPIRE
                 )
-                context['hls_stream_url'] = signed_url
                 logger.debug(f"Сгенерирована ссылка на HLS для видео {video.id}")
             except Exception as e:
-                # Логируем ошибку, но не падаем — просто не отдаём ссылку
                 logger.error(f"Ошибка генерации подписанной ссылки для видео {video.id}: {e}")
                 context['hls_stream_url'] = None
         else:
             context['hls_stream_url'] = None
 
-        # --- Для необработанных видео (исходный MP4) ---
-        if video.file and not video.is_processed:
-            try:
-                storage = get_video_storage()
-                # video.file.name — относительный путь к файлу в бакете
-                signed_mp4_url = storage.get_signed_url(
-                    video.file.name,
-                    expires=settings.AWS_QUERYSTRING_EXPIRE
-                )
-                context['signed_file_url'] = signed_mp4_url
-            except Exception as e:
-                logger.error(f"Ошибка генерации подписанной ссылки для MP4 видео {video.id}: {e}")
-                context['signed_file_url'] = None
-        else:
-            context['signed_file_url'] = None
-
-        # --- Остальные данные контекста (без изменений) ---
+        # --- Остальные данные контекста ---
         user_profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
         context['user_profile'] = user_profile
 
