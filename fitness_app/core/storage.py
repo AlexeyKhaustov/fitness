@@ -30,7 +30,7 @@ class VideoStorageInterface(ABC):
         pass
 
     @abstractmethod
-    def get_signed_url(self, remote_path: str, expires: int = 3600) -> str:
+    def get_signed_url(self, remote_path: str, expires: int = settings.AWS_QUERYSTRING_EXPIRE) -> str:
         pass
 
     @abstractmethod
@@ -56,7 +56,7 @@ class LocalVideoStorage(VideoStorageInterface):
         shutil.copy2(src, local_path)
         logger.debug(f"Файл загружен: {src} -> {local_path}")
 
-    def get_signed_url(self, remote_path: str, expires: int = 3600) -> str:
+    def get_signed_url(self, remote_path: str, expires: int = settings.AWS_QUERYSTRING_EXPIRE) -> str:
         return f"videos/{remote_path}"
 
     def delete_file(self, remote_path: str) -> None:
@@ -105,7 +105,7 @@ class GenericS3VideoStorage(VideoStorageInterface):
             f.write(content)
         logger.debug(f"Файл загружен из S3: {remote_path} -> {local_path}")
 
-    def get_signed_url(self, remote_path: str, expires: int = 3600) -> str:
+    def get_signed_url(self, remote_path: str, expires: int = settings.AWS_QUERYSTRING_EXPIRE) -> str:
         return self.storage.url(remote_path, expire=expires)
 
     def delete_file(self, remote_path: str) -> None:
@@ -152,7 +152,7 @@ class CloudRuS3VideoStorage(Storage, VideoStorageInterface):
         self.access_key = options['access_key']
         self.secret_key = options['secret_key']
         self.default_acl = options.get('default_acl', 'private')
-        self.querystring_expire = options.get('querystring_expire', 3600)
+        self.querystring_expire = options.get('querystring_expire', settings.AWS_QUERYSTRING_EXPIRE)
         # location не используем, т.к. upload_to сам формирует путь
         self.location = ''
 
@@ -200,7 +200,7 @@ class CloudRuS3VideoStorage(Storage, VideoStorageInterface):
             f.write(content)
         logger.debug(f"Файл загружен из Cloud.ru S3: {remote_path} -> {local_path}")
 
-    def get_signed_url(self, remote_path: str, expires: int = 3600) -> str:
+    def get_signed_url(self, remote_path: str, expires: int = settings.AWS_QUERYSTRING_EXPIRE) -> str:
         expires = expires or self.querystring_expire
         url = self.client.generate_presigned_url(
             ClientMethod='get_object',
