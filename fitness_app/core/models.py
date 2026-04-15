@@ -9,7 +9,6 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.urls import reverse
 from django.utils import timezone
-from django.core.files.storage import storages
 from django.conf import settings
 
 
@@ -103,7 +102,7 @@ class Video(models.Model):
     file = models.FileField(
         'Файл',
         upload_to='%Y/%m/',
-        storage=storages['private_video'],
+        storage='private_video',
         max_length=500,
     )
     description = models.TextField('Описание')

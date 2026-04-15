@@ -1,5 +1,5 @@
 # fitness_app/core/management/commands/cleanup_video_files.py
-# Выполнить: docker-compose exec web python manage.py cleanup_video_files
+# Выполнить: docker compose exec web python manage.py cleanup_video_files
 from django.core.management.base import BaseCommand
 from fitness_app.core.models import Video
 import os
