@@ -54,7 +54,7 @@ class VideoAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
         ('HLS обработка', {
-            'fields': ('is_processed', 'processing_error', 'hls_master_playlist'),
+            'fields': ('is_processed', 'hls_links_refreshed_at', 'processing_error', 'hls_master_playlist'),
             'classes': ('collapse',)
         }),
     )
