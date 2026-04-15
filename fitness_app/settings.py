@@ -262,17 +262,17 @@ LOGGING = {
     },
     'root': {
         'handlers': ['console', 'file'] if not DEBUG else ['console'],
-        'level': 'INFO',
+        'level': 'DEBUG',
     },
     'loggers': {
         'django.request': {
             'handlers': ['mail_admins', 'console', 'file'],
-            'level': 'INFO',
+            'level': 'DEBUG',
             'propagate': False,
         },
         'fitness_app': {
             'handlers': ['console', 'file'],
-            'level': 'DEBUG' if DEBUG else 'INFO',
+            'level': 'DEBUG' if DEBUG else 'DEBUG',
             'propagate': False,
         },
         'django.security.DisallowedHost': {
@@ -306,7 +306,7 @@ CELERY_TIMEZONE = TIME_ZONE
 S3_PROVIDER = config('S3_PROVIDER', default='generic')
 
 USE_S3 = config('USE_S3', default=False, cast=bool)
-AWS_QUERYSTRING_EXPIRE = 604800
+AWS_QUERYSTRING_EXPIRE = 60
 
 if USE_S3:
     tenant_id = config('AWS_TENANT_ID')

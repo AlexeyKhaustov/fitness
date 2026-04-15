@@ -84,11 +84,11 @@
                     {% else %}
                         <!-- ОТКРЫТОЕ ВИДЕО -->
                         <div class="aspect-video">
-                        {% if video.is_processed and video.hls_master_playlist %}
+                        {% if video.is_processed and hls_stream_url %}
                             <video id="my-video" class="w-full h-full" controls></video>
                             <script>
                                 const videoElement = document.getElementById('my-video');
-                                let rawUrl = '{{ video.hls_master_playlist|safe }}';
+                                let rawUrl = '{{ hls_stream_url|safe }}';
                                 let streamUrl;
                                 // Если URL уже абсолютный (http:// или https://), используем как есть
                                 if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
@@ -97,7 +97,7 @@
                                     // Иначе добавляем MEDIA_URL (для локальных файлов)
                                     streamUrl = '{{ MEDIA_URL }}' + rawUrl;
                                 }
-                                console.log('Stream URL:', streamUrl);
+                                console.log('Stream URL;', streamUrl);
                                 if (Hls.isSupported()) {
                                     const hls = new Hls();
                                     hls.loadSource(streamUrl);
