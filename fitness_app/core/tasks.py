@@ -82,9 +82,11 @@ def rewrite_variant_playlists(temp_dir: str, remote_base: str, profiles: list, s
                 # Комментарии и директивы EXT* оставляем как есть
                 new_lines.append(line)
             else:
-                # Извлекаем имя сегмента (последняя часть пути)у
-                segment_name = line.split('/')[-1] if '/' in line else line
+                # Извлекаем имя сегмента
+                segment_name = line.split('/')[-1].split('?')[0]
                 segment_remote = remote_base + segment_name
+                logger.debug(f"def rewrite_variant_playlists. segment_name - {segment_name}")
+                logger.debug(f"def rewrite_variant_playlists. remote_base - {remote_base}")
                 signed_url = storage.get_signed_url(segment_remote, expires=settings.AWS_QUERYSTRING_EXPIRE)
                 new_lines.append(signed_url)
 
@@ -198,9 +200,10 @@ def refresh_video_links(video_id: int) -> bool:
                         new_lines.append(line)
                     else:
                         # Извлекаем имя сегмента (последняя часть пути)
-                        # Пример: "out_480p_000.ts" или "https://.../out_480p_000.ts"
-                        segment_name = line.split('/')[-1] if '/' in line else line
+                        segment_name = line.split('/')[-1].split('?')[0]
                         segment_remote = remote_base + segment_name
+                        logger.debug(f"def refresh_video_links. segment_name - {segment_name}")
+                        logger.debug(f"def refresh_video_links. remote_base - {remote_base}")
                         signed_url = storage.get_signed_url(segment_remote, expires=settings.AWS_QUERYSTRING_EXPIRE)
                         new_lines.append(signed_url)
 
