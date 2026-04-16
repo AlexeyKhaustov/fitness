@@ -134,18 +134,20 @@ class VideoDetailView(LoginRequiredMixin, DetailView):
             if not video.hls_links_refreshed_at:
                 need_refresh = True
             else:
-                # Обновляем, если прошло более 5 дней (или другого значения)
-                days_since_refresh = (timezone.now() - video.hls_links_refreshed_at).days
-                if days_since_refresh >= 5:   # 5 дней — запас до 7-дневного TTL
+                # Вычисляем, сколько секунд прошло с момента последнего обновления
+                seconds_since_refresh = (timezone.now() - video.hls_links_refreshed_at).total_seconds()
+                # Обновляем, если прошло больше 80% от TTL (или можно 100% – по выбору)
+                if seconds_since_refresh >= settings.AWS_QUERYSTRING_EXPIRE * 0.8:
                     need_refresh = True
 
             if need_refresh:
-                logger.info(f"Ссылки для видео {video.id} устарели (последнее обновление: {video.hls_links_refreshed_at}), запускаем перегенерацию.")
+                logger.info(
+                    f"Ссылки для видео {video.id} устарели (последнее обновление: {video.hls_links_refreshed_at}), запускаем перегенерацию.")
                 success = refresh_video_links(video.id)
                 if not success:
                     logger.error(f"Не удалось обновить ссылки для видео {video.id}, продолжаем со старыми.")
                 else:
-                    # Перечитаем видео из БД, так как поля обновились
+                    # Перечитываем видео, так как поля обновились
                     video.refresh_from_db()
 
         # --- Динамическая генерация подписанной ссылки на мастер-плейлист ---
@@ -164,7 +166,7 @@ class VideoDetailView(LoginRequiredMixin, DetailView):
         else:
             context['hls_stream_url'] = None
 
-        # --- Остальные данные контекста ---
+        # --- Остальные данные контекста (без изменений) ---
         user_profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
         context['user_profile'] = user_profile
 

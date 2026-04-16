@@ -308,7 +308,6 @@ S3_PROVIDER = config('S3_PROVIDER', default='generic')
 USE_S3 = config('USE_S3', default=False, cast=bool)
 AWS_QUERYSTRING_EXPIRE = 60 # для тестов
 # AWS_QUERYSTRING_EXPIRE = 604800   # 7 дней
-VIDEO_LINKS_REFRESH_DAYS = 5      # через сколько дней обновлять ссылки (запас)
 
 if USE_S3:
     tenant_id = config('AWS_TENANT_ID')
