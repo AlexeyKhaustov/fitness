@@ -61,8 +61,8 @@ def upload_all_files(temp_dir: str, remote_base: str, storage) -> None:
 
 def rewrite_variant_playlists(temp_dir: str, remote_base: str, profiles: list, storage) -> None:
     """
-    Перезаписывает вариантные плейлисты, заменяя относительные пути сегментов
-    на полные подписанные URL с актуальным сроком действия.
+    Перезаписывает вариантные плейлисты, заменяя ссылки на сегменты
+    свежими подписанными URL (извлекает имя сегмента даже из абсолютных ссылок).
     """
     for profile in profiles:
         variant_remote = remote_base + f"out_{profile['name']}.m3u8"
@@ -75,12 +75,16 @@ def rewrite_variant_playlists(temp_dir: str, remote_base: str, profiles: list, s
 
         new_lines = []
         for line in lines:
-            if line.startswith('#') or '://' in line:
-                # Комментарий или уже абсолютная ссылка – оставляем как есть
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith('#'):
+                # Комментарии и директивы EXT* оставляем как есть
                 new_lines.append(line)
             else:
-                # Относительная ссылка на сегмент
-                segment_remote = remote_base + line.strip()
+                # Извлекаем имя сегмента (последняя часть пути)у
+                segment_name = line.split('/')[-1] if '/' in line else line
+                segment_remote = remote_base + segment_name
                 signed_url = storage.get_signed_url(segment_remote, expires=settings.AWS_QUERYSTRING_EXPIRE)
                 new_lines.append(signed_url)
 
@@ -143,7 +147,6 @@ def refresh_video_links(video_id: int) -> bool:
     Вызывается синхронно, когда срок действия ссылок подходит к концу.
     Возвращает True при успехе, False при ошибке.
     """
-
     try:
         video = Video.objects.get(id=video_id)
     except Video.DoesNotExist:
@@ -157,24 +160,26 @@ def refresh_video_links(video_id: int) -> bool:
     storage = get_video_storage()
     remote_base = f"{video.id}/hls/"
 
-    # Определяем реально существующие профили
+    # --- 1. Определяем реально существующие профили с логированием ---
     profiles = []
     for profile in MASTER_BITRATE_LADDER:
         variant_path = remote_base + f"out_{profile['name']}.m3u8"
+        logger.info(f"Проверка существования варианта: {variant_path}")
         if storage.exists(variant_path):
             profiles.append(profile)
+            logger.info(f"Найден профиль {profile['name']}")
         else:
-            logger.debug(f"Профиль {profile['name']} для видео {video_id} не найден, пропускаем")
+            logger.warning(f"Не найден профиль {profile['name']} по пути {variant_path}")
 
     if not profiles:
-        logger.error(f"Для видео {video_id} не найдено ни одного вариантного плейлиста")
+        logger.error(f"Для видео {video_id} не найдено ни одного вариантного плейлиста. Обновление невозможно.")
         return False
 
     logger.info(f"Обновление ссылок для видео {video_id}, профили: {[p['name'] for p in profiles]}")
 
     try:
         with tempfile.TemporaryDirectory(prefix=f"refresh_{video_id}_") as temp_dir:
-            # 1. Перезаписываем вариантные плейлисты
+            # --- 2. Перезаписываем вариантные плейлисты (исправленная логика) ---
             for profile in profiles:
                 variant_remote = remote_base + f"out_{profile['name']}.m3u8"
                 local_variant = os.path.join(temp_dir, f"out_{profile['name']}.m3u8")
@@ -185,10 +190,17 @@ def refresh_video_links(video_id: int) -> bool:
 
                 new_lines = []
                 for line in lines:
-                    if line.startswith('#') or '://' in line:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    if line.startswith('#'):
+                        # Комментарии и директивы EXT* оставляем как есть
                         new_lines.append(line)
                     else:
-                        segment_remote = remote_base + line.strip()
+                        # Извлекаем имя сегмента (последняя часть пути)
+                        # Пример: "out_480p_000.ts" или "https://.../out_480p_000.ts"
+                        segment_name = line.split('/')[-1] if '/' in line else line
+                        segment_remote = remote_base + segment_name
                         signed_url = storage.get_signed_url(segment_remote, expires=settings.AWS_QUERYSTRING_EXPIRE)
                         new_lines.append(signed_url)
 
@@ -199,7 +211,7 @@ def refresh_video_links(video_id: int) -> bool:
                 storage.save_file(new_local, variant_remote)
                 logger.debug(f"Вариантный плейлист {profile['name']} обновлён")
 
-            # 2. Генерируем мастер-плейлист
+            # --- 3. Генерируем свежий мастер-плейлист с подписанными ссылками на варианты ---
             variant_signed_urls = {}
             for profile in profiles:
                 variant_remote = remote_base + f"out_{profile['name']}.m3u8"
@@ -223,7 +235,7 @@ def refresh_video_links(video_id: int) -> bool:
             storage.save_file(new_master_local, master_remote)
             logger.info(f"Мастер-плейлист для видео {video_id} обновлён")
 
-            # 3. Обновляем модель
+            # --- 4. Обновляем модель ---
             video.hls_master_playlist = storage.get_signed_url(master_remote, expires=settings.AWS_QUERYSTRING_EXPIRE)
             video.hls_profiles = variant_signed_urls
             video.hls_links_refreshed_at = timezone.now()
