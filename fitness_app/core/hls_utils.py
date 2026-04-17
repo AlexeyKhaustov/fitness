@@ -2,22 +2,18 @@
 
 import os
 import shutil
-import tempfile
 import logging
+from typing import Optional
+
 from django.conf import settings
-from django.utils import timezone
-from .models import Video
+
 from .storage import get_video_storage
 from .ffmpeg_utils import (
-    get_video_resolution,
-    filter_profiles,
     encode_hls_profile,
-    create_master_playlist,
     MASTER_BITRATE_LADDER
 )
 
 logger = logging.getLogger(__name__)
-
 
 def get_or_download_source(video, temp_dir: str) -> str:
     """Загружает исходный файл видео во временную папку."""
@@ -36,7 +32,7 @@ def get_or_download_source(video, temp_dir: str) -> str:
     return local_input
 
 
-def encode_all_profiles(local_input: str, temp_dir: str, profiles: list) -> None:
+def encode_all_profiles(local_input: str, temp_dir: str, profiles: list, framerate: Optional[float] = None) -> None:
     """Кодирует все профили HLS."""
     for profile in profiles:
         encode_hls_profile(local_input, temp_dir, profile)

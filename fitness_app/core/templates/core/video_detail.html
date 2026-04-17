@@ -82,32 +82,85 @@
                             </div>
                         </div>
                     {% else %}
-                        <!-- ОТКРЫТОЕ ВИДЕО -->
-                        <div class="aspect-video">
-                        {% if video.is_processed and hls_stream_url %}
-                            <video id="my-video" class="w-full h-full" controls></video>
-                            <script>
-                                const videoElement = document.getElementById('my-video');
-                                let rawUrl = '{{ hls_stream_url|safe }}';
-                                let streamUrl;
-                                // Если URL уже абсолютный (http:// или https://), используем как есть
-                                if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
-                                    streamUrl = rawUrl;
-                                } else {
-                                    // Иначе добавляем MEDIA_URL (для локальных файлов)
-                                    streamUrl = '{{ MEDIA_URL }}' + rawUrl;
-                                }
-                                console.log('Stream URL;', streamUrl);
-                                if (Hls.isSupported()) {
-                                    const hls = new Hls();
-                                    hls.loadSource(streamUrl);
-                                    hls.attachMedia(videoElement);
-                                } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-                                    videoElement.src = streamUrl;
-                                }
-                            </script>
-                        {% endif %}
-                        </div>
+       <!-- ОТКРЫТОЕ ВИДЕО -->
+        <div class="aspect-video">
+            {% if video.is_processed and hls_stream_url %}
+                <video id="my-video" class="w-full h-full" controls></video>
+                <script>
+                    (function() {
+                        const videoElement = document.getElementById('my-video');
+                        const streamUrl = '{{ hls_stream_url|safe }}';
+                        console.log('Stream URL:', streamUrl);
+
+                        let hls = null;
+
+                        function initHls() {
+                            if (Hls.isSupported()) {
+                                hls = new Hls({
+                                    debug: false,
+                                    enableWorker: true,
+                                    lowLatencyMode: false,
+                                    backBufferLength: 90,
+                                    maxBufferLength: 30,
+                                    maxMaxBufferLength: 60,
+                                });
+                                hls.loadSource(streamUrl);
+                                hls.attachMedia(videoElement);
+
+                                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                                    videoElement.play().catch(e => console.log('Autoplay prevented:', e));
+                                });
+
+                                hls.on(Hls.Events.ERROR, function(event, data) {
+                                    if (data.fatal) {
+                                        switch(data.type) {
+                                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                                console.error('Fatal network error, trying to recover...', data);
+                                                hls.startLoad();
+                                                break;
+                                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                                console.error('Fatal media error, recovering...', data);
+                                                hls.recoverMediaError();
+                                                break;
+                                            default:
+                                                console.error('Fatal error, cannot recover', data);
+                                                // Показать сообщение пользователю
+                                                const errorMsg = document.createElement('div');
+                                                errorMsg.className = 'absolute inset-0 flex items-center justify-center bg-black bg-opacity-75 text-white text-center p-4';
+                                                errorMsg.innerHTML = '<div><i class="fa-solid fa-circle-exclamation text-4xl mb-2"></i><p>Ошибка воспроизведения. Попробуйте перезагрузить страницу.</p></div>';
+                                                videoElement.parentElement.style.position = 'relative';
+                                                videoElement.parentElement.appendChild(errorMsg);
+                                                break;
+                                        }
+                                    }
+                                });
+                            } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+                                // Для Safari (нативное HLS)
+                                videoElement.src = streamUrl;
+                                videoElement.addEventListener('loadedmetadata', function() {
+                                    videoElement.play().catch(e => console.log('Autoplay prevented:', e));
+                                });
+                            } else {
+                                console.warn('HLS not supported');
+                                const unsupportedMsg = document.createElement('div');
+                                unsupportedMsg.className = 'absolute inset-0 flex items-center justify-center bg-black bg-opacity-75 text-white text-center p-4';
+                                unsupportedMsg.innerHTML = '<div><i class="fa-solid fa-bug text-4xl mb-2"></i><p>Ваш браузер не поддерживает HLS.<br>Пожалуйста, обновите браузер.</p></div>';
+                                videoElement.parentElement.style.position = 'relative';
+                                videoElement.parentElement.appendChild(unsupportedMsg);
+                                videoElement.style.display = 'none';
+                            }
+                        }
+
+                        // Если ссылка уже загружена, инициализируем плеер
+                        if (streamUrl) {
+                            initHls();
+                        } else {
+                            console.warn('HLS stream URL is empty');
+                        }
+                    })();
+                </script>
+            {% endif %}
+        </div>
                     {% endif %}
                 </div>
             </div>

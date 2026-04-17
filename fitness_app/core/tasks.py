@@ -20,7 +20,7 @@ from .hls_utils import (
 from .ffmpeg_utils import (filter_profiles,
                            MASTER_BITRATE_LADDER,
                            create_master_playlist,
-                           get_video_resolution,
+                           get_video_resolution, get_video_framerate,
                            )
 
 logger = logging.getLogger(__name__)
@@ -95,13 +95,14 @@ def process_video_to_hls(self, video_id: int):
         local_input = get_or_download_source(video, temp_dir.name)
 
         width, height = get_video_resolution(local_input)
+        framerate = get_video_framerate(local_input)
         profiles = filter_profiles(height, MASTER_BITRATE_LADDER)
         if not profiles:
             raise RuntimeError("Нет подходящих профилей")
 
         logger.info(f"Видео {video_id}: {width}x{height}, профили: {[p['name'] for p in profiles]}")
 
-        encode_all_profiles(local_input, temp_dir.name, profiles)
+        encode_all_profiles(local_input, temp_dir.name, profiles, framerate)
 
         # Временный мастер (не обязателен, но нужен для create_master_playlist)
         variant_files = [f"out_{p['name']}.m3u8" for p in profiles]
