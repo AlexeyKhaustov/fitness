@@ -18,7 +18,7 @@ MASTER_BITRATE_LADDER: List[Dict] = [
         "name": "1080p",
         "width": 1920,
         "height": 1080,
-        "video_bitrate": "5000k",    # повысили для лучшего качества
+        "video_bitrate": "5000k",
         "audio_bitrate": "128k",
         "preset": "slow",
         "profile": "high",
