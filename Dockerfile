@@ -37,5 +37,4 @@ RUN mkdir -p /var/log/django
 RUN python manage.py collectstatic --noinput
 
 # Команда запуска (будет переопределена в docker-compose.yml, но оставим дефолтную)
-CMD ["gunicorn", "fitness_app.asgi:application", "--workers", "4", "--worker-class",
-"uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "--timeout", "600"]
+CMD ["gunicorn", "fitness_app.asgi:application", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "--timeout", "600"]
