@@ -155,6 +155,12 @@ class Video(models.Model):
         blank=True,
         help_text="Используется для автоматического обновления ссылок при просмотре"
     )
+    hls_last_ttl = models.IntegerField(
+        "TTL при последнем обновлении ссылок",
+        null=True,
+        blank=True,
+        help_text="Значение AWS_QUERYSTRING_EXPIRE в секундах, использованное при генерации ссылок"
+    )
 
     class Meta:
         verbose_name = 'Видео'

@@ -64,7 +64,12 @@ def refresh_video_links(video_id: int) -> bool:
             video.hls_master_playlist = storage.get_signed_url(master_remote, expires=settings.AWS_QUERYSTRING_EXPIRE)
             video.hls_profiles = variant_signed_urls
             video.hls_links_refreshed_at = timezone.now()
-            video.save(update_fields=["hls_master_playlist", "hls_profiles", "hls_links_refreshed_at"])
+            video.hls_last_ttl = settings.AWS_QUERYSTRING_EXPIRE
+            video.save(update_fields=["hls_master_playlist",
+                                      "hls_profiles",
+                                      "hls_links_refreshed_at",
+                                      "hls_last_ttl",
+                                      ])
 
             logger.info(f"Ссылки для видео {video_id} успешно обновлены")
             return True
@@ -120,7 +125,14 @@ def process_video_to_hls(self, video_id: int):
         video.is_processed = True
         video.processing_error = ""
         video.hls_links_refreshed_at = timezone.now()
-        video.save(update_fields=["hls_master_playlist", "hls_profiles", "is_processed", "processing_error", "hls_links_refreshed_at"])
+        video.hls_last_ttl = settings.AWS_QUERYSTRING_EXPIRE
+        video.save(update_fields=["hls_master_playlist",
+                                  "hls_profiles",
+                                  "is_processed",
+                                  "processing_error",
+                                  "hls_links_refreshed_at",
+                                  "hls_last_ttl",
+                                  ])
 
         delete_original_file(video)
 

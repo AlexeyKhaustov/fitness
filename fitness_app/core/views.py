@@ -131,24 +131,27 @@ class VideoDetailView(LoginRequiredMixin, DetailView):
         # --- Проверка и обновление ссылок, если они устарели ---
         if video.is_processed:
             need_refresh = False
-            if not video.hls_links_refreshed_at:
+            current_ttl = settings.AWS_QUERYSTRING_EXPIRE
+
+            if video.hls_last_ttl != current_ttl:
+                need_refresh = True
+                logger.info(f"TTL изменился для видео {video.id}: было {video.hls_last_ttl}, стало {current_ttl}")
+            elif not video.hls_links_refreshed_at:
                 need_refresh = True
             else:
                 # Вычисляем, сколько секунд прошло с момента последнего обновления
                 seconds_since_refresh = (timezone.now() - video.hls_links_refreshed_at).total_seconds()
                 # Обновляем, если прошло больше 80% от TTL (или можно 100% – по выбору)
-                if seconds_since_refresh >= settings.AWS_QUERYSTRING_EXPIRE * 0.8:
+                if seconds_since_refresh >= current_ttl * 0.8:
                     need_refresh = True
 
             if need_refresh:
-                logger.info(
-                    f"Ссылки для видео {video.id} устарели (последнее обновление: {video.hls_links_refreshed_at}), запускаем перегенерацию.")
+                logger.info(f"Ссылки для видео {video.id} устарели, запускаем перегенерацию.")
                 success = refresh_video_links(video.id)
-                if not success:
-                    logger.error(f"Не удалось обновить ссылки для видео {video.id}, продолжаем со старыми.")
-                else:
-                    # Перечитываем видео, так как поля обновились
+                if success:
                     video.refresh_from_db()
+                else:
+                    logger.error(f"Не удалось обновить ссылки для видео {video.id}, продолжаем со старыми.")
 
         # --- Динамическая генерация подписанной ссылки на мастер-плейлист ---
         if video.is_processed:
