@@ -3,15 +3,12 @@ FROM node:20-alpine AS tailwind-builder
 
 WORKDIR /app
 
-# Копируем package.json (package-lock.json не обязателен)
 COPY package.json ./
 RUN npm install && npm cache clean --force
 
-# Создаём директорию для исходников Tailwind
 RUN mkdir -p static/tailwind
 COPY static/tailwind/input.css ./static/tailwind/input.css
 
-# Генерируем output.css
 RUN npx tailwindcss -i ./static/tailwind/input.css -o ./static/css/output.css --minify
 
 # ---- Стадия 2: Основной Python-образ ----
@@ -26,14 +23,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 
-# Копируем собранный CSS из предыдущей стадии
-COPY --from=tailwind-builder /app/static/css/ ./static/css/
-
-# Копируем остальной код проекта
+# Копируем весь проект
 COPY . .
 
-# Удаляем исходные файлы Tailwind, если они случайно попали
-RUN rm -rf static/tailwind
+# Удаляем статику, которая могла быть скопирована из проекта (она будет заменена)
+RUN rm -rf static/css static/tailwind
+
+# Копируем собранный CSS из предыдущей стадии
+COPY --from=tailwind-builder /app/static/css/ ./static/css/
 
 # Устанавливаем Python-зависимости
 RUN pip install --no-cache-dir -r requirements.txt
