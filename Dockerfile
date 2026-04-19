@@ -17,8 +17,11 @@ WORKDIR /app
 COPY package.json .
 RUN npm install
 
-# Копируем исходный Tailwind CSS (создаём заглушку, если файла нет)
-COPY static/tailwind/input.css ./static/tailwind/input.css 2>/dev/null || mkdir -p ./static/tailwind && echo '@import "tailwindcss";' > ./static/tailwind/input.css
+# Создаём директорию и исходный Tailwind CSS (если файла нет, создаём заглушку)
+RUN mkdir -p ./static/tailwind && \
+    if [ ! -f ./static/tailwind/input.css ]; then \
+        echo '@import "tailwindcss";' > ./static/tailwind/input.css; \
+    fi
 
 # Генерируем оптимизированный CSS
 RUN npx tailwindcss -i ./static/tailwind/input.css -o ./static/css/output.css --minify
