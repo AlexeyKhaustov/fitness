@@ -1,3 +1,20 @@
+# ---- Стадия 1: Сборка Tailwind CSS ----
+FROM node:20-alpine AS tailwind-builder
+
+WORKDIR /app
+
+# Копируем package.json и package-lock.json (если есть)
+COPY package.json package-lock.json* ./
+RUN npm ci && npm cache clean --force
+
+# Создаём директорию для исходников Tailwind
+RUN mkdir -p static/tailwind
+COPY static/tailwind/input.css ./static/tailwind/input.css
+
+# Генерируем output.css
+RUN npx tailwindcss -i ./static/tailwind/input.css -o ./static/css/output.css --minify
+
+# ---- Стадия 2: Основной Python-образ ----
 FROM python:3.10-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
@@ -5,35 +22,23 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     ffmpeg \
-    curl \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Копируем package.json и устанавливаем npm зависимости
-COPY package.json .
-RUN npm install
+# Копируем собранный CSS из предыдущей стадии
+COPY --from=tailwind-builder /app/static/css/ ./static/css/
 
-# Копируем весь проект
+# Копируем остальной код проекта (но не перезаписываем static/css)
 COPY . .
 
-# Создаём input.css с минимальным содержимым
-RUN mkdir -p static/tailwind && \
-    echo '@import "tailwindcss";' > static/tailwind/input.css
+# Удаляем исходные файлы Tailwind, если они случайно попали (они не нужны в продакшене)
+RUN rm -rf static/tailwind
 
-# Генерируем output.css (удаляем старый, если есть)
-RUN rm -rf static/css && \
-    npx tailwindcss -i static/tailwind/input.css -o static/css/output.css --minify
-
-# Удаляем node_modules для уменьшения размера образа
-RUN rm -rf node_modules
-
-# Устанавливаем Python зависимости
+# Устанавливаем Python-зависимости
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Создаём папку для логов и собираем статику
+# Создаём папку для логов и собираем статику Django
 RUN mkdir -p /var/log/django && \
     python manage.py collectstatic --noinput
 
