@@ -16,26 +16,24 @@ WORKDIR /app
 COPY package.json .
 RUN npm install
 
-# Копируем весь проект (все файлы)
+# Копируем весь проект
 COPY . .
 
-# Создаём input.css, если его нет
+# Создаём input.css с минимальным содержимым
 RUN mkdir -p static/tailwind && \
-    if [ ! -f static/tailwind/input.css ]; then \
-        echo '@import "tailwindcss";' > static/tailwind/input.css; \
-    fi
+    echo '@import "tailwindcss";' > static/tailwind/input.css
 
-# Удаляем существующий output.css (если это папка или файл), затем генерируем заново
+# Генерируем output.css (удаляем старый, если есть)
 RUN rm -rf static/css && \
     npx tailwindcss -i static/tailwind/input.css -o static/css/output.css --minify
 
-# Удаляем node_modules
+# Удаляем node_modules для уменьшения размера образа
 RUN rm -rf node_modules
 
 # Устанавливаем Python зависимости
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Создаём папку для логов и собираем статику Django
+# Создаём папку для логов и собираем статику
 RUN mkdir -p /var/log/django && \
     python manage.py collectstatic --noinput
 
