@@ -3,9 +3,9 @@ FROM node:20-alpine AS tailwind-builder
 
 WORKDIR /app
 
-# Копируем package.json и package-lock.json (если есть)
-COPY package.json package-lock.json* ./
-RUN npm ci && npm cache clean --force
+# Копируем package.json (package-lock.json не обязателен)
+COPY package.json ./
+RUN npm install && npm cache clean --force
 
 # Создаём директорию для исходников Tailwind
 RUN mkdir -p static/tailwind
@@ -29,10 +29,10 @@ WORKDIR /app
 # Копируем собранный CSS из предыдущей стадии
 COPY --from=tailwind-builder /app/static/css/ ./static/css/
 
-# Копируем остальной код проекта (но не перезаписываем static/css)
+# Копируем остальной код проекта
 COPY . .
 
-# Удаляем исходные файлы Tailwind, если они случайно попали (они не нужны в продакшене)
+# Удаляем исходные файлы Tailwind, если они случайно попали
 RUN rm -rf static/tailwind
 
 # Устанавливаем Python-зависимости
