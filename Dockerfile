@@ -14,28 +14,29 @@ WORKDIR /app
 
 # Копируем package.json и устанавливаем npm зависимости
 COPY package.json .
-RUN npm install && npm list --depth=0
+RUN npm install
 
-# Создаём директорию и input.css
+# Копируем весь проект (все файлы)
+COPY . .
+
+# Создаём input.css, если его нет
 RUN mkdir -p static/tailwind && \
-    echo '@import "tailwindcss";' > static/tailwind/input.css && \
-    cat static/tailwind/input.css
+    if [ ! -f static/tailwind/input.css ]; then \
+        echo '@import "tailwindcss";' > static/tailwind/input.css; \
+    fi
 
-# Генерируем CSS с подробным выводом
-RUN npx tailwindcss -i static/tailwind/input.css -o static/css/output.css --minify --verbose
+# Удаляем существующий output.css (если это папка или файл), затем генерируем заново
+RUN rm -rf static/css && \
+    npx tailwindcss -i static/tailwind/input.css -o static/css/output.css --minify
 
 # Удаляем node_modules
 RUN rm -rf node_modules
 
-# Копируем остальной код
-COPY . .
-
 # Устанавливаем Python зависимости
-COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Создаём папку для логов и собираем статику
-RUN mkdir -p /var/log/django
-RUN python manage.py collectstatic --noinput
+# Создаём папку для логов и собираем статику Django
+RUN mkdir -p /var/log/django && \
+    python manage.py collectstatic --noinput
 
 CMD ["gunicorn", "fitness_app.asgi:application", "--workers", "4", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000", "--timeout", "600"]
