@@ -18,8 +18,7 @@ COPY package.json .
 RUN npm install
 
 # Копируем исходный Tailwind CSS (создаём заглушку, если файла нет)
-COPY static/tailwind/input.css ./static/tailwind/input.css 2>/dev/null ||
-mkdir -p ./static/tailwind && echo '@import "tailwindcss";' > ./static/tailwind/input.css
+COPY static/tailwind/input.css ./static/tailwind/input.css 2>/dev/null || mkdir -p ./static/tailwind && echo '@import "tailwindcss";' > ./static/tailwind/input.css
 
 # Генерируем оптимизированный CSS
 RUN npx tailwindcss -i ./static/tailwind/input.css -o ./static/css/output.css --minify
