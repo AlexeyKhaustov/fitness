@@ -24,16 +24,16 @@ MASTER_BITRATE_LADDER: List[Dict] = [
     #     "profile": "high",
     #     "hls_time": 10,              # длительность сегмента в секундах
     # },
-    {
-        "name": "720p",
-        "width": 1280,
-        "height": 720,
-        "video_bitrate": "3000k",
-        "audio_bitrate": "128k",
-        "preset": "slow",
-        "profile": "high",
-        "hls_time": 10,
-    },
+    # {
+    #     "name": "720p",
+    #     "width": 1280,
+    #     "height": 720,
+    #     "video_bitrate": "3000k",
+    #     "audio_bitrate": "128k",
+    #     "preset": "slow",
+    #     "profile": "high",
+    #     "hls_time": 10,
+    # },
     {
         "name": "480p",
         "width": 854,

@@ -102,7 +102,7 @@ class Video(models.Model):
     file = models.FileField(
         'Файл',
         upload_to='%Y/%m/',
-        storage='private_video',
+#        storage='private_video', загружать исходник в хранилище, понадобится для отдельного микросервиса обработки
         max_length=500,
     )
     description = models.TextField('Описание')
@@ -620,7 +620,6 @@ class MarathonVideo(models.Model):
     file = models.FileField(
         'Файл',
         upload_to='marathon_videos/%Y/%m/',
-        storage='private_video',          # ← используем S3 (или локальное) хранилище
         max_length=500,
     )
     description = models.TextField('Описание', blank=True)
