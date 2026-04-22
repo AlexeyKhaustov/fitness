@@ -18,7 +18,7 @@ def process_video_to_hls(self, video_id: int):
         logger.info(f"Video {video_id} уже обработано")
         return
     try:
-        process_video_to_hls_generic(video, "video")   # пустой префикс → путь /{id}/hls/
+        process_video_to_hls_generic(video, "")   # пустой префикс → путь /{id}/hls/
     except Exception as e:
         raise self.retry(exc=e)
 
