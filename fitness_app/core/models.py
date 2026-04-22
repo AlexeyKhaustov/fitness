@@ -9,7 +9,6 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.urls import reverse
 from django.utils import timezone
-from django.core.files.storage import storages
 from django.conf import settings
 
 
@@ -103,7 +102,7 @@ class Video(models.Model):
     file = models.FileField(
         'Файл',
         upload_to='%Y/%m/',
-        storage=storages['private_video'],
+        storage='private_video',
         max_length=500,
     )
     description = models.TextField('Описание')
@@ -616,28 +615,55 @@ class MarathonAccess(models.Model):
 
 
 class MarathonVideo(models.Model):
-    """Видео, доступное только через покупку марафона"""
-    marathon = models.ForeignKey(
-        Marathon,
-        on_delete=models.CASCADE,
-        related_name='marathon_videos',
-        verbose_name='Марафон'
-    )
-
+    marathon = models.ForeignKey(Marathon, on_delete=models.CASCADE, related_name='marathon_videos')
     title = models.CharField('Название', max_length=200)
-    file = models.FileField('Файл', upload_to='marathon_videos/%Y/%m/')
+    file = models.FileField(
+        'Файл',
+        upload_to='marathon_videos/%Y/%m/',
+        storage='private_video',          # ← используем S3 (или локальное) хранилище
+        max_length=500,
+    )
     description = models.TextField('Описание', blank=True)
     duration = models.IntegerField('Длительность (секунды)', default=0)
     thumbnail = models.ImageField('Превью', upload_to='marathon_thumbs/%Y/%m/', blank=True, null=True)
     order = models.IntegerField('Порядок', default=0)
-
-    # Статистика
     views = models.IntegerField('Просмотры', default=0)
 
-    # Для видео марафонов ВСЕГДА отключаем социальные функции
-    allow_comments = models.BooleanField('Разрешить комментарии', default=False)
-    allow_sharing = models.BooleanField('Разрешить репост', default=False)
-    allow_likes = models.BooleanField('Разрешить лайки', default=False)
+    # HLS поля (аналогично Video)
+    hls_master_playlist = models.URLField(
+        "HLS master playlist",
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text="URL master.m3u8 после обработки"
+    )
+    hls_profiles = models.JSONField(
+        "Профили HLS",
+        default=dict,
+        blank=True,
+        help_text="Словарь с URL для каждого профиля (1080p, 720p, ...)"
+    )
+    is_processed = models.BooleanField(
+        "Обработано в HLS",
+        default=False,
+        help_text="Флаг, указывающий, что видео прошло транскодирование"
+    )
+    processing_error = models.TextField(
+        "Ошибка обработки",
+        blank=True,
+        null=True,
+        help_text="Текст ошибки, если обработка не удалась"
+    )
+    hls_links_refreshed_at = models.DateTimeField(
+        "Дата последнего обновления подписанных ссылок",
+        null=True,
+        blank=True,
+    )
+    hls_last_ttl = models.IntegerField(
+        "TTL при последнем обновлении ссылок",
+        null=True,
+        blank=True,
+    )
 
     created_at = models.DateTimeField('Дата добавления', auto_now_add=True)
     updated_at = models.DateTimeField('Дата обновления', auto_now=True)
@@ -664,6 +690,95 @@ class MarathonVideo(models.Model):
     def increment_views(self):
         self.views += 1
         self.save(update_fields=['views'])
+
+    # ========== HLS методы ==========
+    def get_hls_stream_url(self):
+        """
+        Динамически генерирует подписанную ссылку на master.m3u8.
+        При необходимости перегенерирует ссылки (если TTL изменился или истекло 80% времени).
+        Возвращает URL или None.
+        """
+        if not self.is_processed:
+            return None
+
+        from django.conf import settings
+        from django.utils import timezone
+        from .storage import get_video_storage
+        from .hls_utils import refresh_video_links_generic
+        import logging
+        logger = logging.getLogger(__name__)
+
+        current_ttl = settings.AWS_QUERYSTRING_EXPIRE
+        need_refresh = False
+
+        if self.hls_last_ttl != current_ttl:
+            need_refresh = True
+        elif not self.hls_links_refreshed_at:
+            need_refresh = True
+        else:
+            seconds_since_refresh = (timezone.now() - self.hls_links_refreshed_at).total_seconds()
+            if seconds_since_refresh >= current_ttl * 0.8:
+                need_refresh = True
+
+        if need_refresh:
+            logger.info(f"HLS ссылки для MarathonVideo {self.id} устарели, перегенерация.")
+            success = refresh_video_links_generic(
+                obj=self,
+                remote_base=f"marathon_video/{self.id}/hls/",
+                expires=current_ttl
+            )
+            if success:
+                self.refresh_from_db()
+            else:
+                logger.error(f"Не удалось обновить ссылки для MarathonVideo {self.id}")
+
+        try:
+            storage = get_video_storage()
+            master_remote = f"marathon_video/{self.id}/hls/master.m3u8"
+            return storage.get_signed_url(master_remote, expires=current_ttl)
+        except Exception as e:
+            logger.error(f"Ошибка генерации подписанной ссылки для MarathonVideo {self.id}: {e}")
+            return None
+
+    def delete(self, *args, **kwargs):
+        """Удаляет видео и все связанные HLS-файлы (из S3 или локально)."""
+        import shutil, os, logging
+        from django.conf import settings
+        from .storage import get_video_storage
+        logger = logging.getLogger(__name__)
+
+        # Удаляем HLS-файлы
+        try:
+            storage = get_video_storage()
+            remote_base = f"marathon_video/{self.id}/hls/"
+            # Пытаемся удалить рекурсивно (для S3)
+            if hasattr(storage, 'client') and hasattr(storage, 'bucket_name'):
+                # S3: удаляем все объекты с префиксом
+                objects = storage.client.list_objects_v2(
+                    Bucket=storage.bucket_name,
+                    Prefix=remote_base
+                ).get('Contents', [])
+                for obj in objects:
+                    storage.client.delete_object(Bucket=storage.bucket_name, Key=obj['Key'])
+                logger.info(f"Удалены HLS-файлы MarathonVideo {self.id} из S3")
+            else:
+                # Локальное хранилище
+                hls_path = os.path.join(settings.MEDIA_ROOT, 'videos', f'marathon_video_{self.id}', 'hls')
+                if os.path.exists(hls_path):
+                    shutil.rmtree(hls_path)
+                    logger.info(f"Удалена локальная папка HLS для MarathonVideo {self.id}")
+        except Exception as e:
+            logger.warning(f"Не удалось удалить HLS-файлы MarathonVideo {self.id}: {e}")
+
+        # Удаляем исходный файл
+        if self.file:
+            try:
+                self.file.delete(save=False)
+                logger.info(f"Удалён исходный файл MarathonVideo {self.id}")
+            except Exception as e:
+                logger.warning(f"Не удалось удалить исходный файл MarathonVideo {self.id}: {e}")
+
+        super().delete(*args, **kwargs)
 
 
 class Service(models.Model):

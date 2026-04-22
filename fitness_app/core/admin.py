@@ -557,11 +557,12 @@ class SeoBlockAdmin(admin.ModelAdmin):
 
 @admin.register(MarathonVideo)
 class MarathonVideoAdmin(admin.ModelAdmin):
-    list_display = ('title', 'marathon', 'order', 'views', 'created_at')
-    list_filter = ('marathon',)
+    list_display = ('title', 'marathon', 'order', 'views', 'is_processed', 'created_at')
+    list_filter = ('marathon', 'is_processed')
     search_fields = ('title', 'description')
     list_editable = ('order',)
-    readonly_fields = ('views', 'created_at', 'updated_at')
+    readonly_fields = ('views', 'created_at', 'updated_at',
+                       'hls_master_playlist', 'hls_profiles', 'hls_links_refreshed_at')
 
     fieldsets = (
         ('Основное', {
@@ -569,11 +570,15 @@ class MarathonVideoAdmin(admin.ModelAdmin):
         }),
         ('Файлы', {
             'fields': ('file', 'thumbnail'),
-            'description': 'Рекомендуемый размер превью: 1280×720px'
+            'description': 'Исходный файл (будет автоматически обработан в HLS)'
         }),
         ('Длительность', {
             'fields': ('duration',),
-            'description': 'Длительность в секундах'
+        }),
+        ('HLS обработка', {
+            'fields': ('is_processed', 'processing_error', 'hls_master_playlist',
+                       'hls_profiles', 'hls_links_refreshed_at', 'hls_last_ttl'),
+            'classes': ('collapse',)
         }),
         ('Статистика', {
             'fields': ('views', 'created_at', 'updated_at'),

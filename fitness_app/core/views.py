@@ -302,11 +302,10 @@ def toggle_video_like(request, video_id):
 
 
 def marathon_video_detail(request, marathon_slug, video_id):
-    """Детальная страница видео марафона"""
     marathon = get_object_or_404(Marathon, slug=marathon_slug, is_active=True)
     video = get_object_or_404(MarathonVideo, id=video_id, marathon=marathon)
 
-    # Проверяем доступ к марафону
+    # Проверка доступа
     has_access = False
     if request.user.is_authenticated:
         marathon_access = MarathonAccess.objects.filter(
@@ -314,39 +313,29 @@ def marathon_video_detail(request, marathon_slug, video_id):
             marathon=marathon,
             is_active=True
         ).first()
-
         if marathon_access and marathon_access.is_valid():
             has_access = True
 
     if not has_access:
-        return HttpResponseForbidden(
-            "Для просмотра этого видео требуется покупка марафона."
-        )
+        return HttpResponseForbidden("Для просмотра этого видео требуется покупка марафона.")
 
-    # Увеличиваем просмотры
     video.increment_views()
 
-    # Похожие видео в этом марафоне
-    similar_videos = MarathonVideo.objects.filter(
-        marathon=marathon
-    ).exclude(id=video.id).order_by('order')[:6]
+    # Генерация HLS-ссылки
+    hls_stream_url = video.get_hls_stream_url() if video.is_processed else None
 
-    # Считаем общее количество видео в марафоне
+    similar_videos = MarathonVideo.objects.filter(marathon=marathon).exclude(id=video.id).order_by('order')[:6]
     marathon_videos_count = marathon.marathon_videos.count()
-
-    # Получаем порядковый номер текущего видео
-    video_order = video.order if video.order else MarathonVideo.objects.filter(
-        marathon=marathon,
-        id__lt=video.id
-    ).count() + 1
+    video_order = video.order if video.order else MarathonVideo.objects.filter(marathon=marathon, id__lt=video.id).count() + 1
 
     return render(request, 'core/marathon_video_detail.html', {
         'marathon': marathon,
         'video': video,
         'similar_videos': similar_videos,
         'has_access': has_access,
-        'marathon_videos_count': marathon_videos_count,  # ← ДОБАВИЛИ
+        'marathon_videos_count': marathon_videos_count,
         'video_order': video_order,
+        'hls_stream_url': hls_stream_url,
     })
 
 
