@@ -75,28 +75,34 @@ def get_video_resolution(file_path: str) -> Tuple[int, int]:
     return width, height
 
 
-def get_video_framerate(file_path: str) -> Optional[float]:
+def get_video_framerate(file_path: str) -> float | None:
     """
     Определяет частоту кадров (fps) исходного видео с помощью ffprobe.
     Возвращает float или None, если не удалось определить.
     """
     cmd = [
         "ffprobe", "-v", "error", "-select_streams", "v:0",
-        "-show_entries", "stream=r_frame_rate", "-of", "csv=p=0"
+        "-show_entries", "stream=r_frame_rate", "-of", "default=noprint_wrappers=1:nokey=1",
+        file_path
     ]
-    logger.debug(f"Выполняется команда: {' '.join(cmd)}")
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, check=True)
         output = result.stdout.strip()
-        if output:
-            # ffprobe возвращает рациональное число, например "30000/1001" или "25/1"
-            num, den = map(int, output.split('/'))
-            fps = num / den
-            logger.info(f"Частота кадров исходного видео: {fps:.2f} fps")
-            return fps
+        if not output:
+            return None
+
+        # Обработка форматов: "25/1", "30000/1001", "25", "25.000"
+        if '/' in output:
+            num, den = output.split('/')
+            fps = float(num) / float(den)
+        else:
+            fps = float(output)
+
+        logger.info(f"Частота кадров: {fps:.2f} fps")
+        return fps
     except Exception as e:
         logger.warning(f"Не удалось определить частоту кадров: {e}")
-    return None
+        return None
 
 
 def filter_profiles(source_height: int, ladder: List[Dict]) -> List[Dict]:
