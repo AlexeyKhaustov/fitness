@@ -11,4 +11,5 @@ done
 
 echo "PostgreSQL готова!"
 python manage.py migrate --noinput
+python manage.py collectstatic --noinput
 exec "$@"
